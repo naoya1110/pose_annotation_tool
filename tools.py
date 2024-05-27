@@ -13,7 +13,7 @@ def generate_keypoint_img(img_pic, points_dict):
                 # 白丸
                 img_keypoints = cv2.circle(
                                     img_keypoints,
-                                    value["xy"],
+                                    np.array(value["xy"]).astype("int"),
                                     radius=15,
                                     color = (255,255,255),
                                     thickness=thickness)
@@ -21,7 +21,7 @@ def generate_keypoint_img(img_pic, points_dict):
                 thickness = 3
             img_keypoints = cv2.circle(
                                     img_keypoints,
-                                    value["xy"],
+                                    np.array(value["xy"]).astype(int),
                                     radius=10,
                                     color = (255,0,0),
                                     thickness=thickness)
@@ -69,3 +69,41 @@ def generate_dummy_keypoints():
         points_dict[i+1]["visibility"] = np.random.randint(3)
     
     return points_dict
+
+
+
+def generate_keypoints_dict(data):
+	points_dict = {
+		1: {"label":"nose"},
+		2: {"label":"left_eye"},
+		3: {"label":"right_eye"},
+		4: {"label":"left_ear"},
+		5: {"label":"right_ear"},
+		6: {"label":"left_shoulder"},
+		7: {"label":"right_shoulder"},
+		8: {"label":"left_elbow"},
+		9: {"label":"right_elbow"},
+		10: {"label":"left_wrist"},
+		11: {"label":"right_wrist"},
+		12: {"label":"left_hip"},
+		13: {"label":"right_hip"},
+		14: {"label":"left_knee"},
+		15: {"label":"right_knee"},
+		16: {"label":"left_ankle"},
+		17: {"label":"right_ankle"}
+		}
+
+	for i in range(17):
+		x, y, conf = data[i]
+		points_dict[i+1]["xy"]=(x, y)
+		
+		if x == 0 and y == 0:
+			visibility = 0
+		elif conf < 0.5:
+			visibility = 1
+		else:
+			visibility = 2
+		
+		points_dict[i+1]["visibility"]= visibility
+
+	return points_dict

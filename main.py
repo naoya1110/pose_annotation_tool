@@ -5,7 +5,16 @@ import flet as ft
 import cv2
 import base64
 import numpy as np
-from tools import generate_keypoint_img, draw_keypoints_on_picture, generate_dummy_keypoints
+from PIL import Image
+from tools import generate_keypoint_img
+from tools import draw_keypoints_on_picture
+from tools import generate_dummy_keypoints
+from tools import generate_keypoints_dict
+
+from ultralytics import YOLO
+
+
+model = YOLO("models/yolov8n-pose.pt") 
 
 
 def main(page: ft.Page):
@@ -31,12 +40,31 @@ def main(page: ft.Page):
         filepath = e.files[0].path
 
         # OpenCVで画像を読み込み
+        #img_pic = np.array(Image.open(filepath))
         img_pic = cv2.imread(filepath)
         img_pic = cv2.resize(img_pic, dsize=None, fx=0.5, fy=0.5)
         img_h, img_w, _ = img_pic.shape
         
-        points = generate_dummy_keypoints()
-        img_keypoints = generate_keypoint_img(img_pic, points)
+        
+        # YOLO poseで推論
+        result = model(img_pic)
+        bbox_data_array = result[0].boxes.xyxy.cpu().numpy()
+        keypoints_data_array = result[0].keypoints.data.cpu().numpy()
+        
+        # 推論結果を描画
+        for i in range(bbox_data_array.shape[0]):
+            # draw bbox
+            left, top, right, bottom = bbox_data_array[i]
+            print(left, top, right, bottom)
+            cv2.rectangle(img_pic, (int(left), int(top)), (int(right), int(bottom)), (255,0,0), 2, 1)
+        
+        
+            data = keypoints_data_array[i]
+            keypoints_dict = generate_keypoints_dict(data)
+        
+            #points = generate_dummy_keypoints()
+            img_keypoints = generate_keypoint_img(img_pic, keypoints_dict)
+        
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
         
         # image_displayのプロパティを更新
