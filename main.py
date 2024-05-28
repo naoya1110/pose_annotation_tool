@@ -6,15 +6,19 @@ import cv2
 import base64
 import numpy as np
 from PIL import Image
+import os
+
 from tools import generate_keypoint_img
 from tools import draw_keypoints_on_picture
 from tools import generate_dummy_keypoints
-from tools import generate_keypoints_dict
+from tools import generate_label_text
 
 from ultralytics import YOLO
 
+from tools import PersonKeypoints
 
-model = YOLO("models/yolov8n-pose.pt") 
+modelpath = "models/yolov8n-pose.pt"
+model = YOLO(modelpath) 
 
 
 def main(page: ft.Page):
@@ -37,34 +41,65 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def on_img_open(e: ft.FilePickerResultEvent):
-        filepath = e.files[0].path
+        filepath_img = e.files[0].path
+        dir_images, filename = os.path.split(filepath_img)
+        filename_body, _ = os.path.splitext(filename)
+        dataset_dir, _ = os.path.split(dir_images)
+        filepath_label = os.path.join(dataset_dir, "labels", filename_body+".txt")
+                
 
         # OpenCVで画像を読み込み
         #img_pic = np.array(Image.open(filepath))
-        img_pic = cv2.imread(filepath)
+        img_pic = cv2.imread(filepath_img)
         img_pic = cv2.resize(img_pic, dsize=None, fx=0.5, fy=0.5)
         img_h, img_w, _ = img_pic.shape
         
+        # filepath_labelが存在するか確認し，なければYOLOで推論する
+        if not os.path.exists(filepath_label):
+            print(f"{filepath_label} does not exist.")
+            print(f"Trying to detect keypoints...")
+            # YOLO poseで推論
+            results = model(img_pic)[0]
+            label_text = generate_label_text(results)
+            
+            with open(filepath_label, "w") as file:
+                file.write(label_text)
+                print(f"{filepath_label} generated!")
+        else:
+            print(f"{filepath_label} already exists.")
+            
+        # filepath_labelを読み込み一人ごとにPersonKeypointsクラスのデータを作成
+        with open(filepath_label, "r") as file:
+            data = file.read()
+
+        lines = data.split("\n")
+
+        detected_persons = []
+
+        for line in lines:
+            data = line.split(" ")
+            data = np.array(data, dtype="float32")
+            class_id = int(data[0])
+            box_xywhn = data[1:5]
+            keypoints_xyvisib = data[5:].reshape(-1, 3)
+
+            detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib))
         
-        # YOLO poseで推論
-        result = model(img_pic)
-        bbox_data_array = result[0].boxes.xyxy.cpu().numpy()
-        keypoints_data_array = result[0].keypoints.data.cpu().numpy()
+        print(detected_persons)
+
+        # Boxを描画
+        img_keypoints = np.zeros(img_pic.shape, dtype="uint8")        
+        for person in detected_persons:
+            xn, yn, wn, hn = person.box_xywhn
+            left = int(round((xn-(wn/2))*img_w))
+            right = int(round((xn+(wn/2))*img_w))
+            top = int(round((yn-(hn/2))*img_h))
+            bottom = int(round((yn+(hn/2))*img_h))
+            
+            cv2.rectangle(img_keypoints, (left, top), (right, bottom), (255,0,0), 2, 1) 
+        # 2025.5.28 ここまで
         
-        # 推論結果を描画
-        for i in range(bbox_data_array.shape[0]):
-            # draw bbox
-            left, top, right, bottom = bbox_data_array[i]
-            print(left, top, right, bottom)
-            cv2.rectangle(img_pic, (int(left), int(top)), (int(right), int(bottom)), (255,0,0), 2, 1)
-        
-        
-            data = keypoints_data_array[i]
-            keypoints_dict = generate_keypoints_dict(data)
-        
-            #points = generate_dummy_keypoints()
-            img_keypoints = generate_keypoint_img(img_pic, keypoints_dict)
-        
+        # 写真の上にアノテーションデータを描画
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
         
         # image_displayのプロパティを更新

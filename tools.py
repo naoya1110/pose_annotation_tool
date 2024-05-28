@@ -71,39 +71,62 @@ def generate_dummy_keypoints():
     return points_dict
 
 
+def generate_label_text(results):
+	num_detected_person = results.boxes.shape[0]
+	print(num_detected_person)
+	label_text = ""
 
-def generate_keypoints_dict(data):
-	points_dict = {
-		1: {"label":"nose"},
-		2: {"label":"left_eye"},
-		3: {"label":"right_eye"},
-		4: {"label":"left_ear"},
-		5: {"label":"right_ear"},
-		6: {"label":"left_shoulder"},
-		7: {"label":"right_shoulder"},
-		8: {"label":"left_elbow"},
-		9: {"label":"right_elbow"},
-		10: {"label":"left_wrist"},
-		11: {"label":"right_wrist"},
-		12: {"label":"left_hip"},
-		13: {"label":"right_hip"},
-		14: {"label":"left_knee"},
-		15: {"label":"right_knee"},
-		16: {"label":"left_ankle"},
-		17: {"label":"right_ankle"}
-		}
-
-	for i in range(17):
-		x, y, conf = data[i]
-		points_dict[i+1]["xy"]=(x, y)
+	for i in range(num_detected_person):
+		label_text += "0" # personのclass id
 		
-		if x == 0 and y == 0:
-			visibility = 0
-		elif conf < 0.5:
-			visibility = 1
-		else:
-			visibility = 2
+		box_data = results.boxes.xywhn[i].cpu().numpy()
+		print(box_data)
+		for data in box_data:
+			label_text = label_text + f" {data:.5f}"
 		
-		points_dict[i+1]["visibility"]= visibility
+		xy_data = results.keypoints.xyn[i].cpu().numpy()
+		conf_data = results.keypoints.conf[i].cpu().numpy()
+		
+		for (x, y), conf in zip(xy_data, conf_data):
+			#print(x, y, conf)
+			
+			if x == 0 and y == 0:
+				visibility = 0 # 写真の外
+			elif conf < 0.5:
+				visibility = 1 # 何かに隠れている
+			else:
+				visibility = 2 # 見えている
+			
+			label_text += f" {x:.5f} {y:.5f} {visibility}"
+			
+		if i < (num_detected_person-1):	
+			label_text += "\n"
 
-	return points_dict
+	return label_text
+
+
+class PersonKeypoints:
+    def __init__(self, class_id, box_xywhn, keypoints_xyvisib):
+        self.class_id = class_id
+        self.box_xywhn = box_xywhn
+        self.keypoints_xyvisib = keypoints_xyvisib
+        self.keypoints_dict = {}
+        self.keypoints_name_list = [
+                        "nose",
+                        "left_eye", "right_eye",
+                        "left_ear", "right_ear",
+                        "left_shoulder", "right_shoulder",
+                        "left_elbow", "right_elbow",
+                        "left_wrist", "right_wrist",
+                        "left_hip", "right_hip",
+                        "left_knee","right_knee",
+                        "left_ankle", "right_ankle"
+                        ]
+        
+        for i in range(17):
+            self.keypoints_dict[i] = {
+                "name":self.keypoints_name_list[i],
+                "xn":self.keypoints_xyvisib[i][0],
+                "yn":self.keypoints_xyvisib[i][1],
+                "visibility":int(self.keypoints_xyvisib[i][2])
+            }
