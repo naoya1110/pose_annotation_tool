@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import cv2
+from scipy.spatial.distance import cdist
 
 # Keypoint画像を作成
 def generate_keypoint_img(img_pic, points_dict):
@@ -130,3 +131,73 @@ class PersonKeypoints:
                 "yn":self.keypoints_xyvisib[i][1],
                 "visibility":int(self.keypoints_xyvisib[i][2])
             }
+
+def read_annotation_data(filepath_label):
+    # filepath_labelを読み込み一人ごとにPersonKeypointsクラスのデータを作成
+    with open(filepath_label, "r") as file:
+        data = file.read()
+
+    lines = data.split("\n")
+
+    detected_persons = []
+
+    for line in lines:
+        data = line.split(" ")
+        data = np.array(data, dtype="float32")
+        class_id = int(data[0])
+        box_xywhn = data[1:5]
+        keypoints_xyvisib = data[5:].reshape(-1, 3)
+
+        detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib))
+    
+    return detected_persons
+
+
+def generate_img_keypoints(img_pic, detected_persons):
+
+    img_keypoints = np.zeros(img_pic.shape, dtype="uint8")        
+    img_h, img_w, _ = img_pic.shape
+    keypoints_list = []
+
+    for person in detected_persons:
+        xn, yn, wn, hn = person.box_xywhn
+        left = int(round((xn-(wn/2))*img_w))
+        right = int(round((xn+(wn/2))*img_w))
+        top = int(round((yn-(hn/2))*img_h))
+        bottom = int(round((yn+(hn/2))*img_h))
+        cv2.rectangle(img_keypoints, (left, top), (right, bottom), color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
+        
+        
+        for i, data in person.keypoints_dict.items():
+            name = data["name"]
+            xn = data["xn"]
+            yn = data["yn"]
+            visibility = data["visibility"]
+            x = int(round(xn*img_w))
+            y = int(round(yn*img_h))
+            
+            keypoints_list.append([x, y])
+
+            if visibility == 1:
+                cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+            elif visibility == 2:
+                cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=3, color=(255, 0, 0), thickness=-1, lineType=cv2.LINE_AA)
+            
+    
+    return img_keypoints, keypoints_list
+
+
+
+def find_nearest_coordinate(target_point, points):
+
+    points = np.array(points)
+    distances = cdist([target_point], points)
+
+    # 最小距離のインデックスを取得
+    nearest_idx = distances.argmin()
+    nearest_point = points[nearest_idx]
+
+    # 最も近い座標データを取り出す
+    return nearest_idx, nearest_point

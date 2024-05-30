@@ -12,6 +12,9 @@ from tools import generate_keypoint_img
 from tools import draw_keypoints_on_picture
 from tools import generate_dummy_keypoints
 from tools import generate_label_text
+from tools import read_annotation_data
+from tools import generate_img_keypoints
+from tools import find_nearest_coordinate
 
 from ultralytics import YOLO
 
@@ -19,6 +22,9 @@ from tools import PersonKeypoints
 
 modelpath = "models/yolov8n-pose.pt"
 model = YOLO(modelpath) 
+
+keypoints_list = []
+nearest_idx = 0
 
 
 def main(page: ft.Page):
@@ -41,6 +47,8 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def on_img_open(e: ft.FilePickerResultEvent):
+        global keypoints_list
+        
         filepath_img = e.files[0].path
         dir_images, filename = os.path.split(filepath_img)
         filename_body, _ = os.path.splitext(filename)
@@ -49,8 +57,8 @@ def main(page: ft.Page):
                 
 
         # OpenCVで画像を読み込み
-        #img_pic = np.array(Image.open(filepath))
-        img_pic = cv2.imread(filepath_img)
+        img_pic = np.array(Image.open(filepath_img))
+        #img_pic = cv2.imread(filepath_img)
         img_pic = cv2.resize(img_pic, dsize=None, fx=0.5, fy=0.5)
         img_h, img_w, _ = img_pic.shape
         
@@ -67,42 +75,19 @@ def main(page: ft.Page):
                 print(f"{filepath_label} generated!")
         else:
             print(f"{filepath_label} already exists.")
-            
-        # filepath_labelを読み込み一人ごとにPersonKeypointsクラスのデータを作成
-        with open(filepath_label, "r") as file:
-            data = file.read()
-
-        lines = data.split("\n")
-
-        detected_persons = []
-
-        for line in lines:
-            data = line.split(" ")
-            data = np.array(data, dtype="float32")
-            class_id = int(data[0])
-            box_xywhn = data[1:5]
-            keypoints_xyvisib = data[5:].reshape(-1, 3)
-
-            detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib))
         
-        print(detected_persons)
+        # テキストファイルからアノテーションデータを読み取り
+        detected_persons = read_annotation_data(filepath_label)    
 
-        # Boxを描画
-        img_keypoints = np.zeros(img_pic.shape, dtype="uint8")        
-        for person in detected_persons:
-            xn, yn, wn, hn = person.box_xywhn
-            left = int(round((xn-(wn/2))*img_w))
-            right = int(round((xn+(wn/2))*img_w))
-            top = int(round((yn-(hn/2))*img_h))
-            bottom = int(round((yn+(hn/2))*img_h))
-            
-            cv2.rectangle(img_keypoints, (left, top), (right, bottom), (255,0,0), 2, 1) 
-        # 2025.5.28 ここまで
+        # キーポイント画像を生成
+        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
+        print(keypoints_list)
         
-        # 写真の上にアノテーションデータを描画
+        # 写真とキーポイントデータを重ね合わせ
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
         
         # image_displayのプロパティを更新
+        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
         image_display.src_base64 = get_base64_img(img_result)
         image_display.height = img_h
         image_display.width = img_w
@@ -119,6 +104,27 @@ def main(page: ft.Page):
         y_loc.value = int(e.local_y)
         page.update()
     
+    def mouse_click(e: ft.TapEvent):
+        global keypoints_list, nearest_idx
+        x_loc.value = int(e.local_x)
+        y_loc.value = int(e.local_y)        
+        xy_clicked = (x_loc.value, y_loc.value)
+        print("Clicked Point:", xy_clicked)
+        
+        nearest_idx, nearest_point = find_nearest_coordinate((xy_clicked), keypoints_list)
+        print("Nearest Point:", nearest_idx, nearest_point)
+    
+    def mouse_drag(e: ft.DragUpdateEvent):
+        global keypoints_list, nearest_idx
+        x_loc.value = int(e.local_x)
+        y_loc.value = int(e.local_y)        
+        xy_drag = [x_loc.value, y_loc.value]
+        print("Mouse Dragging:", xy_drag)
+        
+        keypoints_list[nearest_idx] = xy_drag
+        print(keypoints_list)
+        
+    
     
     filepick_button = ft.ElevatedButton("Open Image", on_click=lambda _: file_picker.pick_files(allow_multiple=True))
     
@@ -131,7 +137,9 @@ def main(page: ft.Page):
     
     gd = ft.GestureDetector(
         mouse_cursor=ft.MouseCursor.MOVE,
-        on_hover=mouse_on_hover)
+        on_hover=mouse_on_hover,
+        on_tap_down=mouse_click,
+        on_horizontal_drag_update=mouse_drag)
     
     x_loc_label = ft.Text("X", size=20)
     x_loc = ft.Text("0", size=20)
