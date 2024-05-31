@@ -3,31 +3,6 @@ import numpy as np
 import cv2
 from scipy.spatial.distance import cdist
 
-# Keypoint画像を作成
-def generate_keypoint_img(img_pic, points_dict):
-    img_keypoints = np.zeros(img_pic.shape, dtype="uint8")
-    
-    for key, value in points_dict.items():
-        if value["visibility"] != 0:
-            if value["visibility"] == 2:
-                thickness = -1
-                # 白丸
-                img_keypoints = cv2.circle(
-                                    img_keypoints,
-                                    np.array(value["xy"]).astype("int"),
-                                    radius=15,
-                                    color = (255,255,255),
-                                    thickness=thickness)
-            else:
-                thickness = 3
-            img_keypoints = cv2.circle(
-                                    img_keypoints,
-                                    np.array(value["xy"]).astype(int),
-                                    radius=10,
-                                    color = (255,0,0),
-                                    thickness=thickness)
-    
-    return img_keypoints
 
 
 
@@ -158,6 +133,11 @@ def generate_img_keypoints(img_pic, detected_persons):
     img_keypoints = np.zeros(img_pic.shape, dtype="uint8")        
     img_h, img_w, _ = img_pic.shape
     keypoints_list = []
+    
+    leg_color=(255, 153, 51)   #orange  
+    arm_color = (0, 255, 255) # Cyan
+    face_color = (0, 255, 0) # Green
+    body_color = (255, 0, 255) #Magenta
 
     for person in detected_persons:
         xn, yn, wn, hn = person.box_xywhn
@@ -167,6 +147,7 @@ def generate_img_keypoints(img_pic, detected_persons):
         bottom = int(round((yn+(hn/2))*img_h))
         cv2.rectangle(img_keypoints, (left, top), (right, bottom), color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
         
+        xy_dict = {}
         
         for i, data in person.keypoints_dict.items():
             name = data["name"]
@@ -176,14 +157,42 @@ def generate_img_keypoints(img_pic, detected_persons):
             x = int(round(xn*img_w))
             y = int(round(yn*img_h))
             
+            xy_dict[name] = [x, y]
+            
+            if name in ["nose", "left_eye", "right_eye", "left_ear", "right_ear"]:
+                color = face_color # Green
+            
+            elif name in ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist"]:
+                color = arm_color # Cyan
+
+            elif name in ["left_hip", "right_hip", "left_knee","right_knee", "left_ankle", "right_ankle"]:
+                color = leg_color # Orange
+            
             keypoints_list.append([x, y])
 
             if visibility == 1:
-                cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 0, 0), thickness=1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=3, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                #cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=4, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
             elif visibility == 2:
-                cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=3, color=(255, 0, 0), thickness=-1, lineType=cv2.LINE_AA)
+                #cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=4, color=color, thickness=-1, lineType=cv2.LINE_AA)
+                #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
+        
+        
+        # draw wire frame
+        left_leg = np.array([xy_dict[name] for name in ["left_hip", "left_knee", "left_ankle"] if xy_dict[name]!=[0,0]])
+        right_leg = np.array([xy_dict[name] for name in ["right_hip", "right_knee", "right_ankle"] if xy_dict[name]!=[0,0]])
+        left_arm = np.array([xy_dict[name] for name in ["left_shoulder", "left_elbow", "left_wrist"] if xy_dict[name]!=[0,0]])
+        right_arm = np.array([xy_dict[name] for name in ["right_shoulder", "right_elbow", "right_wrist"] if xy_dict[name]!=[0,0]])
+        body = np.array([xy_dict[name] for name in ["right_hip", "right_shoulder", "left_shoulder", "left_hip", "right_hip"] if xy_dict[name]!=[0,0]])
+        face = np.array([xy_dict[name] for name in ["left_ear", "left_eye", "right_eye", "right_ear"] if xy_dict[name]!=[0,0]])
+        cv2.polylines(img_keypoints, [face], False, face_color, 2)
+        cv2.polylines(img_keypoints, [body], False, body_color, 2)
+        cv2.polylines(img_keypoints, [left_leg], False, leg_color, 2)
+        cv2.polylines(img_keypoints, [right_leg], False, leg_color, 2)
+        cv2.polylines(img_keypoints, [left_arm], False, arm_color, 2)
+        cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
             
     
     return img_keypoints, keypoints_list

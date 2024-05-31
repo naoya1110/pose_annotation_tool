@@ -8,17 +8,17 @@ import numpy as np
 from PIL import Image
 import os
 
-from tools import generate_keypoint_img
 from tools import draw_keypoints_on_picture
 from tools import generate_dummy_keypoints
 from tools import generate_label_text
 from tools import read_annotation_data
 from tools import generate_img_keypoints
 from tools import find_nearest_coordinate
+from tools import PersonKeypoints
 
 from ultralytics import YOLO
 
-from tools import PersonKeypoints
+
 
 modelpath = "models/yolov8n-pose.pt"
 model = YOLO(modelpath) 
