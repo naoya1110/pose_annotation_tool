@@ -193,6 +193,11 @@ def generate_img_keypoints(img_pic, detected_persons):
         cv2.polylines(img_keypoints, [right_leg], False, leg_color, 2)
         cv2.polylines(img_keypoints, [left_arm], False, arm_color, 2)
         cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
+        
+        cv2.putText(img_keypoints, "L", np.array(xy_dict["left_ankle"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, leg_color,2)
+        cv2.putText(img_keypoints, "R", np.array(xy_dict["right_ankle"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, leg_color,2)
+        cv2.putText(img_keypoints, "L", np.array(xy_dict["left_wrist"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, arm_color,2)
+        cv2.putText(img_keypoints, "R", np.array(xy_dict["right_wrist"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, arm_color,2)
             
     
     return img_keypoints, keypoints_list
