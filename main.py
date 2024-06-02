@@ -9,11 +9,9 @@ from PIL import Image
 import os
 
 from tools import draw_keypoints_on_picture
-from tools import generate_dummy_keypoints
 from tools import generate_label_text
 from tools import read_annotation_data
 from tools import generate_img_keypoints
-from tools import find_nearest_coordinate
 from tools import PersonKeypoints
 
 from ultralytics import YOLO
@@ -24,7 +22,10 @@ modelpath = "models/yolov8n-pose.pt"
 model = YOLO(modelpath) 
 
 keypoints_list = []
+detected_persons = []
 nearest_idx = 0
+nearest_point_name = ""
+img_pic = None
 
 
 def main(page: ft.Page):
@@ -47,7 +48,7 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def on_img_open(e: ft.FilePickerResultEvent):
-        global keypoints_list
+        global keypoints_list, detected_persons, img_pic
         
         filepath_img = e.files[0].path
         dir_images, filename = os.path.split(filepath_img)
@@ -77,7 +78,7 @@ def main(page: ft.Page):
             print(f"{filepath_label} already exists.")
         
         # テキストファイルからアノテーションデータを読み取り
-        detected_persons = read_annotation_data(filepath_label)    
+        detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
@@ -105,25 +106,46 @@ def main(page: ft.Page):
         page.update()
     
     def mouse_click(e: ft.TapEvent):
-        global keypoints_list, nearest_idx
+        global keypoints_list, nearest_idx, detected_persons, nearest_point_name
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)        
         xy_clicked = (x_loc.value, y_loc.value)
         print("Clicked Point:", xy_clicked)
         
-        nearest_idx, nearest_point = find_nearest_coordinate((xy_clicked), keypoints_list)
-        print("Nearest Point:", nearest_idx, nearest_point)
+        # nearest_idx, nearest_point = find_nearest_coordinate((xy_clicked), keypoints_list)
+        # print("Nearest Point:", nearest_idx, nearest_point)
+        
+        # とりあえず1人のみ対応
+        person = detected_persons[0]
+        nearest_idx, nearest_point_name, nearest_point = person.find_nearest_keypoint(xy_clicked)
+        print("Nearest Point:", nearest_idx, nearest_point_name, nearest_point)
     
     def mouse_drag(e: ft.DragUpdateEvent):
-        global keypoints_list, nearest_idx
+        global keypoints_list, nearest_idx, nearest_point_name, img_pic
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)        
         xy_drag = [x_loc.value, y_loc.value]
-        print("Mouse Dragging:", xy_drag)
+        print("Mouse Dragging:", nearest_point_name, xy_drag)
         
-        keypoints_list[nearest_idx] = xy_drag
+        person = detected_persons[0]
+        person.update_point(nearest_point_name, xy_drag)
+        
+        detected_persons[0]=person
+        
+        
+        # キーポイント画像を生成
+        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
         print(keypoints_list)
         
+        # 写真とキーポイントデータを重ね合わせ
+        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
+        
+        # image_displayのプロパティを更新
+        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
+        image_display.src_base64 = get_base64_img(img_result)
+        
+        # pageをアップデート
+        page.update()        
     
     
     filepick_button = ft.ElevatedButton("Open Image", on_click=lambda _: file_picker.pick_files(allow_multiple=True))

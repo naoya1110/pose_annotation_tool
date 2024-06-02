@@ -15,36 +15,6 @@ def draw_keypoints_on_picture(img_pic, img_keypoints):
     return img_result
 
 
-# ダミーのキーポイントデータ生成
-def generate_dummy_keypoints():
-    
-    points_dict = {
-        1: {"label":"nose", "xy":(0,0), "visibility":2},
-        2: {"label":"left_eye", "xy":(0,0), "visibility":2},
-        3: {"label":"right_eye", "xy":(0,0), "visibility":2},
-        4: {"label":"left_ear", "xy":(0,0), "visibility":2},
-        5: {"label":"right_ear", "xy":(0,0), "visibility":2},
-        6: {"label":"left_shoulder","xy":(0,0), "visibility":2},
-        7: {"label":"right_shoulder","xy":(0,0), "visibility":2},
-        8: {"label":"left_elbow","xy":(0,0), "visibility":2},
-        9: {"label":"right_elbow","xy":(0,0), "visibility":2},
-        10: {"label":"left_wrist","xy":(0,0), "visibility":2},
-        11: {"label":"right_wrist","xy":(0,0), "visibility":2},
-        12: {"label":"left_hip","xy":(0,0), "visibility":2},
-        13: {"label":"right_hip","xy":(0,0), "visibility":2},
-        14: {"label":"left_knee","xy":(0,0), "visibility":2},
-        15: {"label":"right_knee","xy":(0,0), "visibility":2},
-        16: {"label":"left_ankle","xy":(0,0), "visibility":2},
-        17: {"label":"right_ankle", "xy":(0,0), "visibility":2}
-    }
-    
-    for i in range(17):
-        x = np.random.randint(300)
-        y = np.random.randint(1000)
-        points_dict[i+1]["xy"] = (x,y)
-        points_dict[i+1]["visibility"] = np.random.randint(3)
-    
-    return points_dict
 
 
 def generate_label_text(results):
@@ -82,7 +52,7 @@ def generate_label_text(results):
 
 
 class PersonKeypoints:
-    def __init__(self, class_id, box_xywhn, keypoints_xyvisib):
+    def __init__(self, class_id, box_xywhn, keypoints_xyvisib, img_h, img_w):
         self.class_id = class_id
         self.box_xywhn = box_xywhn
         self.keypoints_xyvisib = keypoints_xyvisib
@@ -98,16 +68,65 @@ class PersonKeypoints:
                         "left_knee","right_knee",
                         "left_ankle", "right_ankle"
                         ]
+        self.img_w = img_w
+        self.img_h = img_h
+        self.keypoint_xy_list = []
+        self.nearest_point_name = ""
+        self.nearest_idx = 0
+        self.nearest_point = []
         
-        for i in range(17):
-            self.keypoints_dict[i] = {
-                "name":self.keypoints_name_list[i],
-                "xn":self.keypoints_xyvisib[i][0],
-                "yn":self.keypoints_xyvisib[i][1],
-                "visibility":int(self.keypoints_xyvisib[i][2])
+        for i, name in enumerate(self.keypoints_name_list):
+            xn=self.keypoints_xyvisib[i][0]
+            yn=self.keypoints_xyvisib[i][1]
+            x=int(self.keypoints_xyvisib[i][0]*self.img_w)
+            y=int(self.keypoints_xyvisib[i][1]*self.img_h)
+            visibility=int(self.keypoints_xyvisib[i][2])
+            self.keypoints_dict[name] = {
+                "xn":xn,
+                "yn":yn,
+                "x":x,
+                "y":y,
+                "visibility":visibility
             }
+            self.keypoint_xy_list.append([x, y])
+    
+    def generate_xy_wire(self, names):
+        
+        xy_wire = []
+        for name in names:
+            x = self.keypoints_dict[name]["x"]
+            y = self.keypoints_dict[name]["y"]
+            if (x!=0) and (y!=0):
+                xy_wire.append([x, y])
+        xy_wire = np.array(xy_wire)
+        
+        return xy_wire
+    
+    def find_nearest_keypoint(self, point):
 
-def read_annotation_data(filepath_label):
+
+        distances = cdist([point], self.keypoint_xy_list)
+
+        # 最小距離のインデックスを取得
+        self.nearest_idx = distances.argmin()
+        self.nearest_point = self.keypoint_xy_list[self.nearest_idx]
+        self.nearest_point_name = self.keypoints_name_list[self.nearest_idx]
+
+        # 最も近い座標データを取り出す
+        return self.nearest_idx, self.nearest_point_name, self.nearest_point
+    
+    def update_point(self, name, xy):
+        x = xy[0]
+        y = xy[1]
+        xn = x/self.img_w
+        yn = y/self.img_h
+        self.keypoints_dict[name]["x"] = x
+        self.keypoints_dict[name]["y"] = y
+        self.keypoints_dict[name]["xn"] = xn
+        self.keypoints_dict[name]["yn"] = yn
+        
+
+def read_annotation_data(filepath_label, img_h, img_w):
     # filepath_labelを読み込み一人ごとにPersonKeypointsクラスのデータを作成
     with open(filepath_label, "r") as file:
         data = file.read()
@@ -122,10 +141,15 @@ def read_annotation_data(filepath_label):
         class_id = int(data[0])
         box_xywhn = data[1:5]
         keypoints_xyvisib = data[5:].reshape(-1, 3)
+        
+        print(keypoints_xyvisib)
 
-        detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib))
+        detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib, img_h, img_w))
     
     return detected_persons
+
+
+
 
 
 def generate_img_keypoints(img_pic, detected_persons):
@@ -149,8 +173,8 @@ def generate_img_keypoints(img_pic, detected_persons):
         
         xy_dict = {}
         
-        for i, data in person.keypoints_dict.items():
-            name = data["name"]
+        for name, data in person.keypoints_dict.items():
+            print(name)
             xn = data["xn"]
             yn = data["yn"]
             visibility = data["visibility"]
@@ -179,14 +203,17 @@ def generate_img_keypoints(img_pic, detected_persons):
                 cv2.circle(img_keypoints, center=(x, y), radius=4, color=color, thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
         
+ 
+
         
-        # draw wire frame
-        left_leg = np.array([xy_dict[name] for name in ["left_hip", "left_knee", "left_ankle"] if xy_dict[name]!=[0,0]])
-        right_leg = np.array([xy_dict[name] for name in ["right_hip", "right_knee", "right_ankle"] if xy_dict[name]!=[0,0]])
-        left_arm = np.array([xy_dict[name] for name in ["left_shoulder", "left_elbow", "left_wrist"] if xy_dict[name]!=[0,0]])
-        right_arm = np.array([xy_dict[name] for name in ["right_shoulder", "right_elbow", "right_wrist"] if xy_dict[name]!=[0,0]])
-        body = np.array([xy_dict[name] for name in ["right_hip", "right_shoulder", "left_shoulder", "left_hip", "right_hip"] if xy_dict[name]!=[0,0]])
-        face = np.array([xy_dict[name] for name in ["left_ear", "left_eye", "right_eye", "right_ear"] if xy_dict[name]!=[0,0]])
+        left_leg = person.generate_xy_wire(["left_hip", "left_knee", "left_ankle"])
+        right_leg = person.generate_xy_wire(["right_hip", "right_knee", "right_ankle"])
+        left_arm = person.generate_xy_wire(["left_shoulder", "left_elbow", "left_wrist"])
+        right_arm = person.generate_xy_wire(["right_shoulder", "right_elbow", "right_wrist"])
+        body = person.generate_xy_wire(["right_hip", "right_shoulder", "left_shoulder", "left_hip", "right_hip"])
+        face = person.generate_xy_wire(["left_ear", "left_eye", "right_eye", "right_ear"])
+
+        
         cv2.polylines(img_keypoints, [face], False, face_color, 2)
         cv2.polylines(img_keypoints, [body], False, body_color, 2)
         cv2.polylines(img_keypoints, [left_leg], False, leg_color, 2)
@@ -194,24 +221,12 @@ def generate_img_keypoints(img_pic, detected_persons):
         cv2.polylines(img_keypoints, [left_arm], False, arm_color, 2)
         cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
         
-        cv2.putText(img_keypoints, "L", np.array(xy_dict["left_ankle"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, leg_color,2)
-        cv2.putText(img_keypoints, "R", np.array(xy_dict["right_ankle"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, leg_color,2)
-        cv2.putText(img_keypoints, "L", np.array(xy_dict["left_wrist"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, arm_color,2)
-        cv2.putText(img_keypoints, "R", np.array(xy_dict["right_wrist"])+5, cv2.FONT_HERSHEY_SIMPLEX, 0.7, arm_color,2)
-            
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(img_keypoints, "L", left_leg[-1]+5, font, 0.7, leg_color,2)
+        cv2.putText(img_keypoints, "R", right_leg[-1]+5, font, 0.7, leg_color,2)
+        cv2.putText(img_keypoints, "L", left_arm[-1]+5, font, 0.7, arm_color,2)
+        cv2.putText(img_keypoints, "R", right_arm[-1]+5, font, 0.7, arm_color,2)
     
     return img_keypoints, keypoints_list
 
 
-
-def find_nearest_coordinate(target_point, points):
-
-    points = np.array(points)
-    distances = cdist([target_point], points)
-
-    # 最小距離のインデックスを取得
-    nearest_idx = distances.argmin()
-    nearest_point = points[nearest_idx]
-
-    # 最も近い座標データを取り出す
-    return nearest_idx, nearest_point
