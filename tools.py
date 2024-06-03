@@ -66,7 +66,8 @@ class PersonKeypoints:
                         "left_wrist", "right_wrist",
                         "left_hip", "right_hip",
                         "left_knee","right_knee",
-                        "left_ankle", "right_ankle"
+                        "left_ankle", "right_ankle",
+                        "box_lt", "box_rt", "box_rb", "box_lb"
                         ]
         self.img_w = img_w
         self.img_h = img_h
@@ -74,8 +75,9 @@ class PersonKeypoints:
         self.nearest_point_name = ""
         self.nearest_idx = 0
         self.nearest_point = []
+        self.nearest_point_distance = 0
         
-        for i, name in enumerate(self.keypoints_name_list):
+        for i, name in enumerate(self.keypoints_name_list[:17]):
             xn=self.keypoints_xyvisib[i][0]
             yn=self.keypoints_xyvisib[i][1]
             x=int(self.keypoints_xyvisib[i][0]*self.img_w)
@@ -89,6 +91,22 @@ class PersonKeypoints:
                 "visibility":visibility
             }
             self.keypoint_xy_list.append([x, y])
+        
+        xn, yn, wn, hn = self.box_xywhn
+        left = int(round((xn-(wn/2))*self.img_w))
+        right = int(round((xn+(wn/2))*self.img_w))
+        top = int(round((yn-(hn/2))*self.img_h))
+        bottom = int(round((yn+(hn/2))*self.img_h))
+        
+        self.keypoints_dict["box_lt"]={"xn":left/self.img_w, "yn":top/self.img_h, "x":left, "y":top, "visibility":2}
+        self.keypoint_xy_list.append([left, top])
+        self.keypoints_dict["box_rt"]={"xn":right/self.img_w, "yn":top/self.img_h, "x":right, "y":top, "visibility":2}
+        self.keypoint_xy_list.append([right, top])
+        self.keypoints_dict["box_rb"]={"xn":right/self.img_w, "yn":bottom/self.img_h, "x":right, "y":bottom, "visibility":2}
+        self.keypoint_xy_list.append([right, bottom])
+        self.keypoints_dict["box_lb"]={"xn":left/self.img_w, "yn":bottom/self.img_h, "x":left, "y":bottom, "visibility":2}
+        self.keypoint_xy_list.append([left, bottom])
+        
     
     def generate_xy_wire(self, names):
         
@@ -104,26 +122,62 @@ class PersonKeypoints:
     
     def find_nearest_keypoint(self, point):
 
-
         distances = cdist([point], self.keypoint_xy_list)
 
         # 最小距離のインデックスを取得
         self.nearest_idx = distances.argmin()
+        self.nearest_point_distance = distances.min()
         self.nearest_point = self.keypoint_xy_list[self.nearest_idx]
         self.nearest_point_name = self.keypoints_name_list[self.nearest_idx]
 
         # 最も近い座標データを取り出す
-        return self.nearest_idx, self.nearest_point_name, self.nearest_point
+        return self.nearest_idx, self.nearest_point_distance, self.nearest_point_name, self.nearest_point
     
     def update_point(self, name, xy):
         x = xy[0]
         y = xy[1]
         xn = x/self.img_w
         yn = y/self.img_h
+        # print(name)
+        # if name == "box_lt":
+        #     self.keypoints_dict["box_lt"][x] = x
+        #     self.keypoints_dict["box_lt"][y] = y
+        #     self.keypoints_dict["box_lt"]["xn"] = xn
+        #     self.keypoints_dict["box_lt"]["yn"] = yn
+        #     self.keypoints_dict["box_lb"][x] = x
+        #     self.keypoints_dict["box_rt"][y] = y
+        #     self.keypoints_dict["box_lb"]["xn"] = xn
+        #     self.keypoints_dict["box_rt"]["yn"] = yn
+        
         self.keypoints_dict[name]["x"] = x
         self.keypoints_dict[name]["y"] = y
         self.keypoints_dict[name]["xn"] = xn
         self.keypoints_dict[name]["yn"] = yn
+        
+        if name == "box_lt":
+            self.keypoints_dict["box_lb"]["x"] = x
+            self.keypoints_dict["box_lb"]["xn"] = xn
+            self.keypoints_dict["box_rt"]["y"] = y
+            self.keypoints_dict["box_rt"]["yn"] = yn
+            
+        elif name == "box_rt":
+            self.keypoints_dict["box_rb"]["x"] = x
+            self.keypoints_dict["box_rb"]["xn"] = xn
+            self.keypoints_dict["box_lt"]["y"] = y
+            self.keypoints_dict["box_lt"]["yn"] = yn
+
+        elif name == "box_rb":
+            self.keypoints_dict["box_rt"]["x"] = x
+            self.keypoints_dict["box_rt"]["xn"] = xn
+            self.keypoints_dict["box_lb"]["y"] = y
+            self.keypoints_dict["box_lb"]["yn"] = yn
+
+        elif name == "box_lb":
+            self.keypoints_dict["box_lt"]["x"] = x
+            self.keypoints_dict["box_lt"]["xn"] = xn
+            self.keypoints_dict["box_rb"]["y"] = y
+            self.keypoints_dict["box_rb"]["yn"] = yn
+    
         
 
 def read_annotation_data(filepath_label, img_h, img_w):
@@ -163,15 +217,10 @@ def generate_img_keypoints(img_pic, detected_persons):
     arm_color = (0, 255, 255) # Cyan
     face_color = (0, 255, 0) # Green
     body_color = (255, 0, 255) #Magenta
+    box_color = (255, 0, 0) # Red
 
     for person in detected_persons:
-        xn, yn, wn, hn = person.box_xywhn
-        left = int(round((xn-(wn/2))*img_w))
-        right = int(round((xn+(wn/2))*img_w))
-        top = int(round((yn-(hn/2))*img_h))
-        bottom = int(round((yn+(hn/2))*img_h))
-        cv2.rectangle(img_keypoints, (left, top), (right, bottom), color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
-        
+
         xy_dict = {}
         
         for name, data in person.keypoints_dict.items():
@@ -193,6 +242,9 @@ def generate_img_keypoints(img_pic, detected_persons):
             elif name in ["left_hip", "right_hip", "left_knee","right_knee", "left_ankle", "right_ankle"]:
                 color = leg_color # Orange
             
+            elif name in ["box_lt", "box_rt", "box_rb", "box_lb"]:
+                color = box_color # Red
+            
             keypoints_list.append([x, y])
 
             if visibility == 1:
@@ -213,6 +265,7 @@ def generate_img_keypoints(img_pic, detected_persons):
         right_arm = person.generate_xy_wire(["right_shoulder", "right_elbow", "right_wrist"])
         body = person.generate_xy_wire(["right_hip", "right_shoulder", "left_shoulder", "left_hip", "right_hip"])
         face = person.generate_xy_wire(["left_ear", "left_eye", "right_eye", "right_ear"])
+        box = person.generate_xy_wire(["box_lt", "box_rt", "box_rb", "box_lb", "box_lt"])
 
         
         cv2.polylines(img_keypoints, [face], False, face_color, 2)
@@ -221,6 +274,7 @@ def generate_img_keypoints(img_pic, detected_persons):
         cv2.polylines(img_keypoints, [right_leg], False, leg_color, 2)
         cv2.polylines(img_keypoints, [left_arm], False, arm_color, 2)
         cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
+        cv2.polylines(img_keypoints, [box], False, box_color, 2)
         
         font = cv2.FONT_HERSHEY_SIMPLEX
         if len(left_leg) > 0:

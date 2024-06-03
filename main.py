@@ -27,6 +27,8 @@ detected_persons = []
 nearest_idx = 0
 nearest_point_name = ""
 img_pic = None
+selected_person_idx = 0
+selected_point_name = ""
 
 
 def main(page: ft.Page):
@@ -112,33 +114,40 @@ def main(page: ft.Page):
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)
         page.update()
+        
+    def mouse_double_click(e: ft.TapEvent):
+        print("double click")
     
     def mouse_click(e: ft.TapEvent):
-        global keypoints_list, nearest_idx, detected_persons, nearest_point_name
+        global keypoints_list, nearest_idx, detected_persons, nearest_point_name, selected_person_idx, selected_point_name
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)        
         xy_clicked = (x_loc.value, y_loc.value)
         print("Clicked Point:", xy_clicked)
         
-        # nearest_idx, nearest_point = find_nearest_coordinate((xy_clicked), keypoints_list)
-        # print("Nearest Point:", nearest_idx, nearest_point)
+        nearest_point_distance_list = []
+        nearest_point_name_list = []
+        for i, person in enumerate(detected_persons):
+            nearest_idx, nearest_point_dictance, nearest_point_name, nearest_point = person.find_nearest_keypoint(xy_clicked)
+            print("Nearest Point:", nearest_idx, nearest_point_name, nearest_point)
+            nearest_point_distance_list.append(nearest_point_dictance)
+            nearest_point_name_list.append(nearest_point_name)
         
-        # とりあえず1人のみ対応
-        person = detected_persons[0]
-        nearest_idx, nearest_point_name, nearest_point = person.find_nearest_keypoint(xy_clicked)
-        print("Nearest Point:", nearest_idx, nearest_point_name, nearest_point)
+        selected_person_idx = np.array(nearest_point_distance_list).argmin()
+        selected_point_name = nearest_point_name_list[selected_person_idx]
+        print("selected person idx", selected_person_idx)
+        print("selected point name", selected_point_name)
     
     def mouse_drag(e: ft.DragUpdateEvent):
-        global keypoints_list, nearest_idx, nearest_point_name, img_pic
+        global keypoints_list, nearest_idx, nearest_point_name, img_pic, detected_persons
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)        
         xy_drag = [x_loc.value, y_loc.value]
         print("Mouse Dragging:", nearest_point_name, xy_drag)
         
-        person = detected_persons[0]
-        person.update_point(nearest_point_name, xy_drag)
-        
-        detected_persons[0]=person
+        person = detected_persons[selected_person_idx]
+        person.update_point(selected_point_name, xy_drag)
+        detected_persons[selected_person_idx]=person
         
         
         # キーポイント画像を生成
@@ -169,7 +178,8 @@ def main(page: ft.Page):
         mouse_cursor=ft.MouseCursor.MOVE,
         on_hover=mouse_on_hover,
         on_tap_down=mouse_click,
-        on_horizontal_drag_update=mouse_drag)
+        on_horizontal_drag_update=mouse_drag,
+        on_double_tap=mouse_double_click)
     
     x_loc_label = ft.Text("X", size=20)
     x_loc = ft.Text("0", size=20)
