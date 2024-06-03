@@ -136,15 +136,16 @@ def read_annotation_data(filepath_label, img_h, img_w):
     detected_persons = []
 
     for line in lines:
-        data = line.split(" ")
-        data = np.array(data, dtype="float32")
-        class_id = int(data[0])
-        box_xywhn = data[1:5]
-        keypoints_xyvisib = data[5:].reshape(-1, 3)
-        
-        print(keypoints_xyvisib)
+        if len(line)>10:
+            data = line.split(" ")
+            data = np.array(data, dtype="float32")
+            class_id = int(data[0])
+            box_xywhn = data[1:5]
+            keypoints_xyvisib = data[5:].reshape(-1, 3)
+            
+            print(keypoints_xyvisib)
 
-        detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib, img_h, img_w))
+            detected_persons.append(PersonKeypoints(class_id, box_xywhn, keypoints_xyvisib, img_h, img_w))
     
     return detected_persons
 
