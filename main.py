@@ -7,6 +7,7 @@ import base64
 import numpy as np
 from PIL import Image
 import os
+import time
 
 from tools import draw_keypoints_on_picture
 from tools import generate_label_text
@@ -35,10 +36,15 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = ft.colors.INDIGO_50
     page.padding = 50
-    page.window_height = 500
-    page.window_width = 800
+    #page.window_height = 800
+    #page.window_width = 800
+    page.window_maximized = True
+    page.update()
+    time.sleep(1)
+    print("Full Screen", page.window_height, page.window_width)
     
-    IMG_SIZE= 300
+    IMG_SIZE= int(page.window_height*0.8)
+    print(IMG_SIZE)
 
     # numpy画像データをbase64にエンコードする関数
     def get_base64_img(img):
@@ -60,7 +66,9 @@ def main(page: ft.Page):
         # OpenCVで画像を読み込み
         img_pic = np.array(Image.open(filepath_img))
         #img_pic = cv2.imread(filepath_img)
-        img_pic = cv2.resize(img_pic, dsize=None, fx=0.5, fy=0.5)
+        original_img_h, _, _ = img_pic.shape
+        resize_ratio = IMG_SIZE/original_img_h
+        img_pic = cv2.resize(img_pic, dsize=None, fx=resize_ratio, fy=resize_ratio)
         img_h, img_w, _ = img_pic.shape
         
         # filepath_labelが存在するか確認し，なければYOLOで推論する
@@ -151,7 +159,7 @@ def main(page: ft.Page):
     filepick_button = ft.ElevatedButton("Open Image", on_click=lambda _: file_picker.pick_files(allow_multiple=True))
     
     # 初期画像（ダミー）
-    img_blank = 255*np.ones((300, 300, 3), dtype="uint8")
+    img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
     img_h, img_w, _ = img_blank.shape
     image_display = ft.Image(src_base64=get_base64_img(img_blank),
                              width=img_w, height=img_h,
