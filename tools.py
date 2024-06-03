@@ -223,10 +223,14 @@ def generate_img_keypoints(img_pic, detected_persons):
         cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
         
         font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img_keypoints, "L", left_leg[-1]+5, font, 0.7, leg_color,2)
-        cv2.putText(img_keypoints, "R", right_leg[-1]+5, font, 0.7, leg_color,2)
-        cv2.putText(img_keypoints, "L", left_arm[-1]+5, font, 0.7, arm_color,2)
-        cv2.putText(img_keypoints, "R", right_arm[-1]+5, font, 0.7, arm_color,2)
+        if len(left_leg) > 0:
+            cv2.putText(img_keypoints, "L", left_leg[-1]+5, font, 0.7, leg_color,2)
+        if len(right_leg) > 0:
+            cv2.putText(img_keypoints, "R", right_leg[-1]+5, font, 0.7, leg_color,2)
+        if len(left_arm) > 0:
+            cv2.putText(img_keypoints, "L", left_arm[-1]+5, font, 0.7, arm_color,2)
+        if len(right_arm) > 0:
+            cv2.putText(img_keypoints, "R", right_arm[-1]+5, font, 0.7, arm_color,2)
     
     return img_keypoints, keypoints_list
 
