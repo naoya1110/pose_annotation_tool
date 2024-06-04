@@ -29,6 +29,11 @@ nearest_point_name = ""
 img_pic = None
 selected_person_idx = 0
 selected_point_name = ""
+img_idx = 0
+img_dir = ""
+image_filenames = []
+filepath_img = ""
+num_img_files = 0
 
 
 def main(page: ft.Page):
@@ -54,11 +59,41 @@ def main(page: ft.Page):
         img_base64 = base64.b64encode(encoded).decode("ascii")
         return img_base64
     
+    def on_open_img_dir(e: ft.FilePickerResultEvent):
+        global images_dir, image_filenames, filepath_img, num_img_files
+        images_dir = e.path
+        image_filenames = sorted(os.listdir(images_dir))
+        image_filenames = [x for x in image_filenames if ".jpg" in x]
+        num_img_files = len(image_filenames)
+        print(image_filenames)
+        # 最初の画像を開く
+        filepath_img = os.path.join(images_dir, image_filenames[0])
+        open_image(filepath_img)
+    
+    def on_next_img_button_clicked(e):
+        global img_idx, filepath_img
+        print(image_filenames)
+        if img_idx < num_img_files-1:
+            img_idx +=1
+            filepath_img = os.path.join(images_dir, image_filenames[img_idx])
+            print(filepath_img)
+            open_image(filepath_img)
+
+    def on_previous_img_button_clicked(e):
+        global img_idx, filepath_img
+        print(image_filenames)
+        if img_idx > 0:
+            img_idx -= 1
+            filepath_img = os.path.join(images_dir, image_filenames[img_idx])
+            print(filepath_img)
+            open_image(filepath_img)
+        
+    
     # ファイルが選択された時のコールバック
-    def on_img_open(e: ft.FilePickerResultEvent):
+    def open_image(filepath_img):
         global keypoints_list, detected_persons, img_pic
         
-        filepath_img = e.files[0].path
+        print(filepath_img)
         dir_images, filename = os.path.split(filepath_img)
         filename_body, _ = os.path.splitext(filename)
         dataset_dir, _ = os.path.split(dir_images)
@@ -109,6 +144,62 @@ def main(page: ft.Page):
         
         # pageをアップデート
         page.update()
+    
+    # # ファイルが選択された時のコールバック
+    # def on_img_open(e: ft.FilePickerResultEvent):
+    #     global keypoints_list, detected_persons, img_pic
+        
+    #     filepath_img = e.files[0].path
+    #     dir_images, filename = os.path.split(filepath_img)
+    #     filename_body, _ = os.path.splitext(filename)
+    #     dataset_dir, _ = os.path.split(dir_images)
+    #     filepath_label = os.path.join(dataset_dir, "labels", filename_body+".txt")
+                
+
+    #     # OpenCVで画像を読み込み
+    #     img_pic = np.array(Image.open(filepath_img))
+    #     #img_pic = cv2.imread(filepath_img)
+    #     original_img_h, _, _ = img_pic.shape
+    #     resize_ratio = IMG_SIZE/original_img_h
+    #     img_pic = cv2.resize(img_pic, dsize=None, fx=resize_ratio, fy=resize_ratio)
+    #     img_h, img_w, _ = img_pic.shape
+        
+    #     # filepath_labelが存在するか確認し，なければYOLOで推論する
+    #     if not os.path.exists(filepath_label):
+    #         print(f"{filepath_label} does not exist.")
+    #         print(f"Trying to detect keypoints...")
+    #         # YOLO poseで推論
+    #         results = model(img_pic)[0]
+    #         label_text = generate_label_text(results)
+            
+    #         with open(filepath_label, "w") as file:
+    #             file.write(label_text)
+    #             print(f"{filepath_label} generated!")
+    #     else:
+    #         print(f"{filepath_label} already exists.")
+        
+    #     # テキストファイルからアノテーションデータを読み取り
+    #     detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
+
+    #     # キーポイント画像を生成
+    #     img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
+    #     print(keypoints_list)
+        
+    #     # 写真とキーポイントデータを重ね合わせ
+    #     img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
+        
+    #     # image_displayのプロパティを更新
+    #     img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
+    #     image_display.src_base64 = get_base64_img(img_result)
+    #     image_display.height = img_h
+    #     image_display.width = img_w
+        
+    #     # stackのプロパティを更新
+    #     stack.height = img_h
+    #     stack.width = img_w
+        
+    #     # pageをアップデート
+    #     page.update()
     
     def mouse_on_hover(e: ft.HoverEvent):
         x_loc.value = int(e.local_x)
@@ -167,6 +258,9 @@ def main(page: ft.Page):
     
     
     filepick_button = ft.ElevatedButton("Open Image", on_click=lambda _: file_picker.pick_files(allow_multiple=True))
+    open_img_dir_button = ft.ElevatedButton("Open Image Directory", on_click=lambda _: file_picker.get_directory_path(initial_directory="dataset"))
+    next_img_button = ft.ElevatedButton("Next", on_click=on_next_img_button_clicked)
+    previous_img_button = ft.ElevatedButton("Previous", on_click=on_previous_img_button_clicked)
     
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
@@ -192,10 +286,11 @@ def main(page: ft.Page):
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
-    page.add(filepick_button)
+    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button]))
     page.add(ft.Row([stack, mouse_loc]))
     
-    file_picker = ft.FilePicker(on_result=on_img_open)
+    #file_picker = ft.FilePicker(on_result=on_img_open)
+    file_picker = ft.FilePicker(on_result=on_open_img_dir)
     page.overlay.append(file_picker)
     page.update()
     
