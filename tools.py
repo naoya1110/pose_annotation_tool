@@ -248,12 +248,12 @@ def generate_img_keypoints(img_pic, detected_persons):
             keypoints_list.append([x, y])
 
             if visibility == 1:
-                cv2.circle(img_keypoints, center=(x, y), radius=8, color=color, thickness=1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=7, color=color, thickness=1, lineType=cv2.LINE_AA)
                 #cv2.circle(img_keypoints, center=(x, y), radius=6, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
             elif visibility == 2:
                 #cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=4, color=color, thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
         
  
@@ -268,13 +268,13 @@ def generate_img_keypoints(img_pic, detected_persons):
         box = person.generate_xy_wire(["box_lt", "box_rt", "box_rb", "box_lb", "box_lt"])
 
         
-        cv2.polylines(img_keypoints, [face], False, face_color, 2)
-        cv2.polylines(img_keypoints, [body], False, body_color, 2)
-        cv2.polylines(img_keypoints, [left_leg], False, leg_color, 2)
-        cv2.polylines(img_keypoints, [right_leg], False, leg_color, 2)
-        cv2.polylines(img_keypoints, [left_arm], False, arm_color, 2)
-        cv2.polylines(img_keypoints, [right_arm], False, arm_color, 2)
-        cv2.polylines(img_keypoints, [box], False, box_color, 2)
+        cv2.polylines(img_keypoints, [face], False, face_color, 1)
+        cv2.polylines(img_keypoints, [body], False, body_color, 1)
+        cv2.polylines(img_keypoints, [left_leg], False, leg_color, 1)
+        cv2.polylines(img_keypoints, [right_leg], False, leg_color, 1)
+        cv2.polylines(img_keypoints, [left_arm], False, arm_color, 1)
+        cv2.polylines(img_keypoints, [right_arm], False, arm_color, 1)
+        cv2.polylines(img_keypoints, [box], False, box_color, 1)
         
         font = cv2.FONT_HERSHEY_SIMPLEX
         if len(left_leg) > 0:

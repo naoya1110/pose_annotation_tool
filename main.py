@@ -19,7 +19,8 @@ from ultralytics import YOLO
 
 
 
-modelpath = "models/yolov8n-pose.pt"
+#modelpath = "models/yolov8n-pose.pt"
+modelpath = "models/yolov8l-pose.pt"
 model = YOLO(modelpath) 
 
 keypoints_list = []
@@ -146,7 +147,7 @@ def main(page: ft.Page):
         # pageをアップデート
         page.update()
     
-    def on_label_assist_button_clicked(e):
+    def on_yolo_assist_button_clicked(e):
         global keypoints_list, detected_persons, img_pic, filepath_label
         print(f"Trying to detect keypoints...")
         # YOLO poseで推論
@@ -325,7 +326,7 @@ def main(page: ft.Page):
     next_img_button = ft.ElevatedButton("Next", on_click=on_next_img_button_clicked)
     previous_img_button = ft.ElevatedButton("Previous", on_click=on_previous_img_button_clicked)
     save_annotation_button = ft.ElevatedButton("Save", on_click=on_save_annotation_button_clicked)
-    label_assist_button = ft.ElevatedButton("Label Assist", on_click=on_label_assist_button_clicked)
+    yolo_assist_button = ft.ElevatedButton("YOLO Assist", on_click=on_yolo_assist_button_clicked)
     
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
@@ -351,7 +352,7 @@ def main(page: ft.Page):
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
-    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, label_assist_button]))
+    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button]))
     page.add(ft.Row([stack, mouse_loc]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
