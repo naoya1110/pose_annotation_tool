@@ -33,6 +33,7 @@ img_idx = 0
 img_dir = ""
 image_filenames = []
 filepath_img = ""
+filepath_label = ""
 num_img_files = 0
 
 
@@ -91,7 +92,7 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def open_image(filepath_img):
-        global keypoints_list, detected_persons, img_pic
+        global keypoints_list, detected_persons, img_pic, filepath_label
         
         print(filepath_img)
         dir_images, filename = os.path.split(filepath_img)
@@ -114,10 +115,10 @@ def main(page: ft.Page):
             print(f"Trying to detect keypoints...")
             # YOLO poseで推論
             results = model(img_pic)[0]
-            label_text = generate_label_text(results)
+            annotation_text = generate_label_text(results)
             
             with open(filepath_label, "w") as file:
-                file.write(label_text)
+                file.write(annotation_text)
                 print(f"{filepath_label} generated!")
         else:
             print(f"{filepath_label} already exists.")
@@ -144,6 +145,68 @@ def main(page: ft.Page):
         
         # pageをアップデート
         page.update()
+    
+    def on_label_assist_button_clicked(e):
+        global keypoints_list, detected_persons, img_pic, filepath_label
+        print(f"Trying to detect keypoints...")
+        # YOLO poseで推論
+        results = model(img_pic)[0]
+        annotation_text = generate_label_text(results)
+        
+        with open(filepath_label, "w") as file:
+            file.write(annotation_text)
+            print(f"{filepath_label} generated!")
+
+        # テキストファイルからアノテーションデータを読み取り
+        img_h, img_w, _ = img_pic.shape
+        detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
+
+        # キーポイント画像を生成
+        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
+        print(keypoints_list)
+        
+        # 写真とキーポイントデータを重ね合わせ
+        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
+        
+        # image_displayのプロパティを更新
+        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
+        image_display.src_base64 = get_base64_img(img_result)
+        
+        # pageをアップデート
+        page.update()
+        
+        
+        
+    
+    # アノテーションを保存
+    def on_save_annotation_button_clicked(e):
+        print("save annotation")
+        annotation_text = ""
+        for person in detected_persons:
+            print(person.keypoints_dict)
+            class_idx = 0
+            box_lt_xn = person.keypoints_dict["box_lt"]["xn"]
+            box_lt_yn = person.keypoints_dict["box_lt"]["yn"]
+            box_rb_xn = person.keypoints_dict["box_rb"]["xn"]
+            box_rb_yn = person.keypoints_dict["box_rb"]["yn"]
+            box_center_xn = (box_lt_xn + box_rb_xn)/2
+            box_center_yn = (box_lt_yn + box_rb_yn)/2
+            box_width = abs(box_lt_xn - box_rb_xn)
+            box_height = abs(box_lt_yn - box_rb_yn)
+            annotation_text += f"{class_idx:d} {box_center_xn:.6f} {box_center_yn:.6f} {box_width:.6f} {box_height:.6f}"
+            i = 0
+            for name, data in person.keypoints_dict.items():
+                annotation_text += f' {data["xn"]:.6f} {data["yn"]:.6f} {data["visibility"]:d}'
+                i += 1
+                if i==17: break
+            annotation_text += "\n"
+        print(annotation_text)
+        
+        with open(filepath_label, "w") as f:
+            f.write(annotation_text)
+        
+        
+            
     
     # # ファイルが選択された時のコールバック
     # def on_img_open(e: ft.FilePickerResultEvent):
@@ -261,6 +324,8 @@ def main(page: ft.Page):
     open_img_dir_button = ft.ElevatedButton("Open Image Directory", on_click=lambda _: file_picker.get_directory_path(initial_directory="dataset"))
     next_img_button = ft.ElevatedButton("Next", on_click=on_next_img_button_clicked)
     previous_img_button = ft.ElevatedButton("Previous", on_click=on_previous_img_button_clicked)
+    save_annotation_button = ft.ElevatedButton("Save", on_click=on_save_annotation_button_clicked)
+    label_assist_button = ft.ElevatedButton("Label Assist", on_click=on_label_assist_button_clicked)
     
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
@@ -286,7 +351,7 @@ def main(page: ft.Page):
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
-    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button]))
+    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, label_assist_button]))
     page.add(ft.Row([stack, mouse_loc]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)

@@ -248,8 +248,8 @@ def generate_img_keypoints(img_pic, detected_persons):
             keypoints_list.append([x, y])
 
             if visibility == 1:
-                #cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=6, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=8, color=color, thickness=1, lineType=cv2.LINE_AA)
+                #cv2.circle(img_keypoints, center=(x, y), radius=6, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
             elif visibility == 2:
                 #cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
