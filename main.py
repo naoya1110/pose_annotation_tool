@@ -116,14 +116,15 @@ def main(page: ft.Page):
         page.update()
         
     def mouse_double_click(e: ft.TapEvent):
-        print("double click")
-    
+        print("Double click")
+
     def mouse_click(e: ft.TapEvent):
         global keypoints_list, nearest_idx, detected_persons, nearest_point_name, selected_person_idx, selected_point_name
+        print("Single click")
         x_loc.value = int(e.local_x)
         y_loc.value = int(e.local_y)        
         xy_clicked = (x_loc.value, y_loc.value)
-        print("Clicked Point:", xy_clicked)
+        print("Point:", xy_clicked)
         
         nearest_point_distance_list = []
         nearest_point_name_list = []

@@ -219,7 +219,7 @@ def generate_img_keypoints(img_pic, detected_persons):
     body_color = (255, 0, 255) #Magenta
     box_color = (255, 0, 0) # Red
 
-    for person in detected_persons:
+    for i, person in enumerate(detected_persons):
 
         xy_dict = {}
         
@@ -249,11 +249,11 @@ def generate_img_keypoints(img_pic, detected_persons):
 
             if visibility == 1:
                 #cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=4, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=6, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
             elif visibility == 2:
                 #cv2.circle(img_keypoints, center=(x, y), radius=5, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
-                cv2.circle(img_keypoints, center=(x, y), radius=4, color=color, thickness=-1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
         
  
@@ -285,6 +285,11 @@ def generate_img_keypoints(img_pic, detected_persons):
             cv2.putText(img_keypoints, "L", left_arm[-1]+5, font, 0.7, arm_color,2)
         if len(right_arm) > 0:
             cv2.putText(img_keypoints, "R", right_arm[-1]+5, font, 0.7, arm_color,2)
+        
+        x = person.keypoints_dict["box_lt"]["x"]
+        y = person.keypoints_dict["box_lt"]["y"]
+        cv2.rectangle(img_keypoints, (x, y), (x+25, y+28), box_color, thickness=-1)
+        cv2.putText(img_keypoints, f"{i}", (x+5,y+20), font, 0.7, (255,255,255), 2)
     
     return img_keypoints, keypoints_list
 
