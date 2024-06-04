@@ -19,8 +19,8 @@ from ultralytics import YOLO
 
 
 
-#modelpath = "models/yolov8n-pose.pt"
-modelpath = "models/yolov8l-pose.pt"
+modelpath = "models/yolov8n-pose.pt"
+#modelpath = "models/yolov8l-pose.pt"
 model = YOLO(modelpath) 
 
 keypoints_list = []
@@ -44,7 +44,7 @@ def main(page: ft.Page):
     page.title = "HUMAN POSE ANNOTATION TOOL"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = ft.colors.INDIGO_50
-    page.padding = 50
+    page.padding = 25
     #page.window_height = 800
     #page.window_width = 800
     page.window_maximized = True
@@ -52,7 +52,7 @@ def main(page: ft.Page):
     time.sleep(1)
     print("Full Screen", page.window_height, page.window_width)
     
-    IMG_SIZE= int(page.window_height*0.8)
+    IMG_SIZE= int(page.window_height*0.85)
     print(IMG_SIZE)
 
     # numpy画像データをbase64にエンコードする関数
@@ -70,24 +70,38 @@ def main(page: ft.Page):
         print(image_filenames)
         # 最初の画像を開く
         filepath_img = os.path.join(images_dir, image_filenames[0])
+        progress_bar.value = (img_idx+1)/num_img_files
+        progress_text.value = f"{img_idx+1}/{num_img_files}"
         open_image(filepath_img)
     
     def on_next_img_button_clicked(e):
         global img_idx, filepath_img
+        if auto_save_checkbox.value:
+            save_annotation()
+            print("saved annotation")
+            
         print(image_filenames)
         if img_idx < num_img_files-1:
             img_idx +=1
             filepath_img = os.path.join(images_dir, image_filenames[img_idx])
             print(filepath_img)
+            progress_bar.value = (img_idx+1)/num_img_files
+            progress_text.value = f"{img_idx+1}/{num_img_files}"
             open_image(filepath_img)
 
     def on_previous_img_button_clicked(e):
         global img_idx, filepath_img
+        if auto_save_checkbox.value:
+            save_annotation()
+            print("saved annotation")
+            
         print(image_filenames)
         if img_idx > 0:
             img_idx -= 1
             filepath_img = os.path.join(images_dir, image_filenames[img_idx])
             print(filepath_img)
+            progress_bar.value = (img_idx+1)/num_img_files
+            progress_text.value = f"{img_idx+1}/{num_img_files}"
             open_image(filepath_img)
         
     
@@ -129,7 +143,7 @@ def main(page: ft.Page):
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        print(keypoints_list)
+        # print(keypoints_list)
         
         # 写真とキーポイントデータを重ね合わせ
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
@@ -164,7 +178,7 @@ def main(page: ft.Page):
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        print(keypoints_list)
+        # print(keypoints_list)
         
         # 写真とキーポイントデータを重ね合わせ
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
@@ -181,6 +195,9 @@ def main(page: ft.Page):
     
     # アノテーションを保存
     def on_save_annotation_button_clicked(e):
+        save_annotation()
+    
+    def save_annotation():
         print("save annotation")
         annotation_text = ""
         for person in detected_persons:
@@ -207,63 +224,6 @@ def main(page: ft.Page):
             f.write(annotation_text)
         
         
-            
-    
-    # # ファイルが選択された時のコールバック
-    # def on_img_open(e: ft.FilePickerResultEvent):
-    #     global keypoints_list, detected_persons, img_pic
-        
-    #     filepath_img = e.files[0].path
-    #     dir_images, filename = os.path.split(filepath_img)
-    #     filename_body, _ = os.path.splitext(filename)
-    #     dataset_dir, _ = os.path.split(dir_images)
-    #     filepath_label = os.path.join(dataset_dir, "labels", filename_body+".txt")
-                
-
-    #     # OpenCVで画像を読み込み
-    #     img_pic = np.array(Image.open(filepath_img))
-    #     #img_pic = cv2.imread(filepath_img)
-    #     original_img_h, _, _ = img_pic.shape
-    #     resize_ratio = IMG_SIZE/original_img_h
-    #     img_pic = cv2.resize(img_pic, dsize=None, fx=resize_ratio, fy=resize_ratio)
-    #     img_h, img_w, _ = img_pic.shape
-        
-    #     # filepath_labelが存在するか確認し，なければYOLOで推論する
-    #     if not os.path.exists(filepath_label):
-    #         print(f"{filepath_label} does not exist.")
-    #         print(f"Trying to detect keypoints...")
-    #         # YOLO poseで推論
-    #         results = model(img_pic)[0]
-    #         label_text = generate_label_text(results)
-            
-    #         with open(filepath_label, "w") as file:
-    #             file.write(label_text)
-    #             print(f"{filepath_label} generated!")
-    #     else:
-    #         print(f"{filepath_label} already exists.")
-        
-    #     # テキストファイルからアノテーションデータを読み取り
-    #     detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
-
-    #     # キーポイント画像を生成
-    #     img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-    #     print(keypoints_list)
-        
-    #     # 写真とキーポイントデータを重ね合わせ
-    #     img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
-        
-    #     # image_displayのプロパティを更新
-    #     img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
-    #     image_display.src_base64 = get_base64_img(img_result)
-    #     image_display.height = img_h
-    #     image_display.width = img_w
-        
-    #     # stackのプロパティを更新
-    #     stack.height = img_h
-    #     stack.width = img_w
-        
-    #     # pageをアップデート
-    #     page.update()
     
     def mouse_on_hover(e: ft.HoverEvent):
         x_loc.value = int(e.local_x)
@@ -321,12 +281,14 @@ def main(page: ft.Page):
         page.update()        
     
     
-    filepick_button = ft.ElevatedButton("Open Image", on_click=lambda _: file_picker.pick_files(allow_multiple=True))
-    open_img_dir_button = ft.ElevatedButton("Open Image Directory", on_click=lambda _: file_picker.get_directory_path(initial_directory="dataset"))
+    open_img_dir_button = ft.ElevatedButton("Open Image Directory", on_click=lambda _: file_picker.get_directory_path())
     next_img_button = ft.ElevatedButton("Next", on_click=on_next_img_button_clicked)
     previous_img_button = ft.ElevatedButton("Previous", on_click=on_previous_img_button_clicked)
     save_annotation_button = ft.ElevatedButton("Save", on_click=on_save_annotation_button_clicked)
     yolo_assist_button = ft.ElevatedButton("YOLO Assist", on_click=on_yolo_assist_button_clicked)
+    auto_save_checkbox = ft.Checkbox(label="Auto Save", value=True)
+    progress_bar = ft.ProgressBar(width=400, height=10)
+    progress_text = ft.Text()
     
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
@@ -352,8 +314,9 @@ def main(page: ft.Page):
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
-    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button]))
+    page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
     page.add(ft.Row([stack, mouse_loc]))
+    page.add(ft.Row([progress_bar, progress_text]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
     file_picker = ft.FilePicker(on_result=on_open_img_dir)
