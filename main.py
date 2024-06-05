@@ -28,6 +28,21 @@ keypoints_name_list =  [
                     "left_knee","right_knee",
                     "left_ankle", "right_ankle"]
 
+keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
+                                    ft.TextField(label="X",
+                                                width=50, height=30,
+                                                border="underline",
+                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                    ft.TextField(label="Y",
+                                                width=50, height=30,
+                                                border="underline",
+                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                    ft.TextField(label="Vis",
+                                                width=50, height=30,
+                                                border="underline",
+                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                    ]) for name in keypoints_name_list])
+
 modelpath = "models/yolov8n-pose.pt"
 #modelpath = "models/yolov8l-pose.pt"
 model = YOLO(modelpath) 
@@ -45,6 +60,7 @@ image_filenames = []
 filepath_img = ""
 filepath_label = ""
 num_img_files = 0
+person = None
 
 
 def main(page: ft.Page):
@@ -116,7 +132,7 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def open_image(filepath_img):
-        global keypoints_list, detected_persons, img_pic, filepath_label
+        global keypoints_list, detected_persons, img_pic, filepath_label, keypoints_table
         
         print(filepath_img)
         dir_images, filename = os.path.split(filepath_img)
@@ -149,7 +165,8 @@ def main(page: ft.Page):
         
         # テキストファイルからアノテーションデータを読み取り
         detected_persons = read_annotation_data(filepath_label, img_h, img_w)
-        update_person_dropdown(detected_persons)    
+        update_person_idx_dropdown(detected_persons)
+        update_keypoints_table(detected_persons[0])
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
@@ -171,12 +188,18 @@ def main(page: ft.Page):
         # pageをアップデート
         page.update()
     
-    def update_person_dropdown(detected_persons):
-        person_dropdown.options = []
+    def update_person_idx_dropdown(detected_persons):
+        person_idx_dropdown.options = []
         if len(detected_persons) > 0:
             for i in range(len(detected_persons)):
-                person_dropdown.options.append(ft.dropdown.Option(i))
-            person_dropdown.value = 0
+                person_idx_dropdown.options.append(ft.dropdown.Option(i))
+            person_idx_dropdown.value = 0
+    
+    def on_person_idx_dropdown_changed(e):
+        person_idx = int(person_idx_dropdown.value)
+        person = detected_persons[person_idx]
+        update_keypoints_table(person)
+        
         
     
     def on_yolo_assist_button_clicked(e):
@@ -282,7 +305,21 @@ def main(page: ft.Page):
         person = detected_persons[selected_person_idx]
         person.update_point(selected_point_name, xy_drag)
         detected_persons[selected_person_idx]=person
-        
+        update_keypoints_table(person)
+
+    def update_keypoints_table(person):
+        for i, name in enumerate(keypoints_name_list):
+            x = person.keypoints_dict[name]["x"]
+            y = person.keypoints_dict[name]["y"]
+            visibility = person.keypoints_dict[name]["visibility"]
+            keypoints_table.controls[i].controls[1].value = x
+            keypoints_table.controls[i].controls[2].value = y
+            keypoints_table.controls[i].controls[3].value = visibility
+        keypoints_table.update()
+            
+            
+            
+
         
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
@@ -307,23 +344,26 @@ def main(page: ft.Page):
     auto_save_checkbox = ft.Checkbox(label="Auto Save", value=True)
     progress_bar = ft.ProgressBar(width=400, height=10)
     progress_text = ft.Text()
-    person_dropdown = ft.Dropdown(width=100, options=[])
+    person_idx_dropdown = ft.Dropdown(width=100, options=[], on_change=on_person_idx_dropdown_changed)
+    #keypoints_table = generate_keypoints_table(person)
     
+
+            
         
-    keypoint_table = ft.Column([ft.Row([ft.Text(name, width=100),
-                                        ft.TextField(label="X",
-                                                    width=50, height=30,
-                                                    border="underline",
-                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
-                                        ft.TextField(label="Y",
-                                                    width=50, height=30,
-                                                    border="underline",
-                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
-                                        ft.TextField(label="Vis",
-                                                    width=50, height=30,
-                                                    border="underline",
-                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
-                                        ]) for name in keypoints_name_list])
+    # keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
+    #                                     ft.TextField(label="X",
+    #                                                 width=50, height=30,
+    #                                                 border="underline",
+    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
+    #                                     ft.TextField(label="Y",
+    #                                                 width=50, height=30,
+    #                                                 border="underline",
+    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
+    #                                     ft.TextField(label="Vis",
+    #                                                 width=50, height=30,
+    #                                                 border="underline",
+    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
+    #                                     ]) for name in keypoints_name_list])
 
     
     # 初期画像（ダミー）
@@ -350,7 +390,7 @@ def main(page: ft.Page):
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
     page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
-    page.add(ft.Row([stack, ft.Column([person_dropdown, keypoint_table])]))
+    page.add(ft.Row([stack, ft.Column([person_idx_dropdown, keypoints_table])]))
     page.add(ft.Row([progress_bar, progress_text, mouse_loc]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
