@@ -28,20 +28,28 @@ keypoints_name_list =  [
                     "left_knee","right_knee",
                     "left_ankle", "right_ankle"]
 
-keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
-                                    ft.TextField(label="X",
-                                                width=50, height=30,
-                                                border="underline",
-                                                text_size=16, text_align=ft.TextAlign.RIGHT),
-                                    ft.TextField(label="Y",
-                                                width=50, height=30,
-                                                border="underline",
-                                                text_size=16, text_align=ft.TextAlign.RIGHT),
-                                    ft.TextField(label="Vis",
-                                                width=50, height=30,
-                                                border="underline",
-                                                text_size=16, text_align=ft.TextAlign.RIGHT),
-                                    ]) for name in keypoints_name_list])
+# def on_keypoints_table_changed(e):
+#     print("keypoints table changed manually")
+
+# keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
+#                                     ft.TextField(label="X",
+#                                                 width=50, height=30,
+#                                                 border="underline",
+#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
+#                                                 on_submit=on_keypoints_table_changed),
+#                                     ft.TextField(label="Y",
+#                                                 width=50, height=30,
+#                                                 border="underline",
+#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
+#                                                 on_submit=on_keypoints_table_changed),
+#                                     ft.TextField(label="Vis",
+#                                                 width=50, height=30,
+#                                                 border="underline",
+#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
+#                                                 on_submit=on_keypoints_table_changed),
+#                                     ]) for name in keypoints_name_list])
+
+
 
 modelpath = "models/yolov8n-pose.pt"
 #modelpath = "models/yolov8l-pose.pt"
@@ -79,6 +87,63 @@ def main(page: ft.Page):
     
     IMG_SIZE= int(page.window_height*0.80)
     print(IMG_SIZE)
+
+
+    def on_keypoints_table_changed(e):
+        global detected_persons
+        
+        print("keypoints table changed manually")
+        img_h, img_w, _ = img_pic.shape
+        person = detected_persons[int(person_idx_dropdown.value)]
+        
+        for i in range(17):
+            name = keypoints_table.controls[i].controls[0].value
+            x = int(keypoints_table.controls[i].controls[1].value)
+            y = int(keypoints_table.controls[i].controls[2].value)
+            visibility = int(keypoints_table.controls[i].controls[3].value)
+            
+            person.keypoints_dict[name]["x"] = x
+            person.keypoints_dict[name]["xn"] = x/img_w
+            person.keypoints_dict[name]["y"] = y
+            person.keypoints_dict[name]["yn"] = y/img_h
+            person.keypoints_dict[name]["visibility"] = visibility
+        
+        detected_persons[int(person_idx_dropdown.value)]=person
+        
+        # キーポイント画像を生成
+        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
+        # print(keypoints_list)
+        
+        # 写真とキーポイントデータを重ね合わせ
+        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
+        
+        # image_displayのプロパティを更新
+        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
+        image_display.src_base64 = get_base64_img(img_result)
+        
+        update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+        
+        # pageをアップデート
+        page.update()
+
+    keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
+                                        ft.TextField(label="X",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=16, text_align=ft.TextAlign.RIGHT,
+                                                    on_submit=on_keypoints_table_changed),
+                                        ft.TextField(label="Y",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=16, text_align=ft.TextAlign.RIGHT,
+                                                    on_submit=on_keypoints_table_changed),
+                                        ft.TextField(label="Vis",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=16, text_align=ft.TextAlign.RIGHT,
+                                                    on_submit=on_keypoints_table_changed),
+                                        ]) for name in keypoints_name_list])
+
 
     # numpy画像データをbase64にエンコードする関数
     def get_base64_img(img):
@@ -170,7 +235,6 @@ def main(page: ft.Page):
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        # print(keypoints_list)
         
         # 写真とキーポイントデータを重ね合わせ
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
@@ -178,6 +242,7 @@ def main(page: ft.Page):
         # image_displayのプロパティを更新
         img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
         image_display.src_base64 = get_base64_img(img_result)
+        
         image_display.height = img_h
         image_display.width = img_w
         
@@ -196,8 +261,7 @@ def main(page: ft.Page):
             person_idx_dropdown.value = 0
     
     def on_person_idx_dropdown_changed(e):
-        person_idx = int(person_idx_dropdown.value)
-        person = detected_persons[person_idx]
+        person = detected_persons[int(person_idx_dropdown.value)]
         update_keypoints_table(person)
         
         
@@ -240,6 +304,7 @@ def main(page: ft.Page):
     def on_save_annotation_button_clicked(e):
         save_annotation()
     
+    # アノテーションを保存
     def save_annotation():
         print("save annotation")
         annotation_text = ""
@@ -294,15 +359,37 @@ def main(page: ft.Page):
         
         selected_person_idx = np.array(nearest_point_distance_list).argmin()
         selected_point_name = nearest_point_name_list[selected_person_idx]
+        person_idx_dropdown.value = selected_person_idx
+        selected_person_idx_text.value = selected_person_idx
+        selected_keypoint_name_text.value = selected_point_name
+        
+        for i, name in enumerate(keypoints_name_list):
+            if name == selected_point_name:
+                bgcolor = ft.colors.ORANGE_100
+            else:
+                bgcolor = ft.colors.TRANSPARENT
+            keypoints_table.controls[i].controls[0].bgcolor = bgcolor
+        page.update()
         print("selected person idx", selected_person_idx)
         print("selected point name", selected_point_name)
     
     def mouse_drag(e: ft.DragUpdateEvent):
         global keypoints_list, nearest_idx, nearest_point_name, img_pic, detected_persons
-        x_loc.value = int(e.local_x)
-        y_loc.value = int(e.local_y)        
-        xy_drag = [x_loc.value, y_loc.value]
-        print("Mouse Dragging:", nearest_point_name, xy_drag)
+        
+        img_h, img_w, _ = img_pic.shape
+        mouse_x = int(e.local_x)
+        mouse_y = int(e.local_y)
+        
+        mouse_x = min([mouse_x, img_w])
+        mouse_x = max([0, mouse_x])
+        mouse_y = min([mouse_y, img_h])
+        mouse_y = max([0, mouse_y])
+        
+        x_loc.value = mouse_x
+        y_loc.value = mouse_y
+              
+        xy_drag = [mouse_x, mouse_y]
+        #print("Mouse Dragging:", nearest_point_name, xy_drag)
         
         person = detected_persons[selected_person_idx]
         person.update_point(selected_point_name, xy_drag)
@@ -318,10 +405,6 @@ def main(page: ft.Page):
             keypoints_table.controls[i].controls[2].value = y
             keypoints_table.controls[i].controls[3].value = visibility
         keypoints_table.update()
-            
-            
-            
-
         
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
@@ -330,7 +413,7 @@ def main(page: ft.Page):
         # 写真とキーポイントデータを重ね合わせ
         img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
         
-        # image_displayのプロパティを更新
+        # image_displayの画像を更新
         img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
         image_display.src_base64 = get_base64_img(img_result)
         
@@ -338,6 +421,7 @@ def main(page: ft.Page):
         page.update()        
     
     
+    # コントロール
     open_img_dir_button = ft.ElevatedButton("Open Image Directory", on_click=lambda _: file_picker.get_directory_path())
     next_img_button = ft.ElevatedButton("Next", on_click=on_next_img_button_clicked)
     previous_img_button = ft.ElevatedButton("Previous", on_click=on_previous_img_button_clicked)
@@ -359,6 +443,7 @@ def main(page: ft.Page):
                              width=img_w, height=img_h,
                              fit=ft.ImageFit.CONTAIN)
     
+    # Gesture Detector
     gd = ft.GestureDetector(
         mouse_cursor=ft.MouseCursor.MOVE,
         on_hover=mouse_on_hover,
@@ -371,13 +456,20 @@ def main(page: ft.Page):
     y_loc_label = ft.Text("Y", size=20)
     y_loc = ft.Text("0", size=20)
     
-    mouse_loc = ft.Row([x_loc_label, x_loc, y_loc_label, y_loc])
+    selected_person_label = ft.Text("Person", size=20)
+    selected_person_idx_text = ft.Text("", size=20)
+    selected_keypoint_name_label = ft.Text("Keypoint", size=20)
+    selected_keypoint_name_text = ft.Text("", size=20)
+    
+
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
     page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
     page.add(ft.Row([stack, ft.Column([person_idx_dropdown, keypoints_table])]))
-    page.add(ft.Row([progress_bar, progress_text, mouse_loc]))
+    page.add(ft.Row([progress_bar, progress_text,
+                    x_loc_label, x_loc, y_loc_label, y_loc,
+                    selected_person_label, selected_person_idx_text, selected_keypoint_name_label, selected_keypoint_name_text]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
     file_picker = ft.FilePicker(on_result=on_open_img_dir)
