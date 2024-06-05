@@ -52,7 +52,7 @@ def main(page: ft.Page):
     time.sleep(1)
     print("Full Screen", page.window_height, page.window_width)
     
-    IMG_SIZE= int(page.window_height*0.85)
+    IMG_SIZE= int(page.window_height*0.80)
     print(IMG_SIZE)
 
     # numpy画像データをbase64にエンコードする関数
@@ -139,7 +139,8 @@ def main(page: ft.Page):
             print(f"{filepath_label} already exists.")
         
         # テキストファイルからアノテーションデータを読み取り
-        detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
+        detected_persons = read_annotation_data(filepath_label, img_h, img_w)
+        update_person_dropdown(detected_persons)    
 
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
@@ -160,6 +161,14 @@ def main(page: ft.Page):
         
         # pageをアップデート
         page.update()
+    
+    def update_person_dropdown(detected_persons):
+        person_dropdown.options = []
+        if len(detected_persons) > 0:
+            for i in range(len(detected_persons)):
+                person_dropdown.options.append(ft.dropdown.Option(i))
+            person_dropdown.value = 0
+        
     
     def on_yolo_assist_button_clicked(e):
         global keypoints_list, detected_persons, img_pic, filepath_label
@@ -289,6 +298,7 @@ def main(page: ft.Page):
     auto_save_checkbox = ft.Checkbox(label="Auto Save", value=True)
     progress_bar = ft.ProgressBar(width=400, height=10)
     progress_text = ft.Text()
+    person_dropdown = ft.Dropdown(width=100, options=[])
     
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
@@ -309,14 +319,13 @@ def main(page: ft.Page):
     y_loc_label = ft.Text("Y", size=20)
     y_loc = ft.Text("0", size=20)
     
-    mouse_loc = ft.Column([ft.Row([x_loc_label, x_loc]),
-                           ft.Row([y_loc_label, y_loc])])
+    mouse_loc = ft.Row([x_loc_label, x_loc, y_loc_label, y_loc])
     
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
     page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
-    page.add(ft.Row([stack, mouse_loc]))
-    page.add(ft.Row([progress_bar, progress_text]))
+    page.add(ft.Row([stack, person_dropdown]))
+    page.add(ft.Row([progress_bar, progress_text, mouse_loc]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
     file_picker = ft.FilePicker(on_result=on_open_img_dir)
