@@ -5,7 +5,6 @@ from scipy.spatial.distance import cdist
 
 
 
-
 # 写真の上にキーポイントを重ね合わせる
 def draw_keypoints_on_picture(img_pic, img_keypoints):
     mask = ~(img_keypoints == 0).all(axis=2)

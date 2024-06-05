@@ -17,7 +17,16 @@ from tools import PersonKeypoints
 
 from ultralytics import YOLO
 
-
+keypoints_name_list =  [
+                    "nose",
+                    "left_eye", "right_eye",
+                    "left_ear", "right_ear",
+                    "left_shoulder", "right_shoulder",
+                    "left_elbow", "right_elbow",
+                    "left_wrist", "right_wrist",
+                    "left_hip", "right_hip",
+                    "left_knee","right_knee",
+                    "left_ankle", "right_ankle"]
 
 modelpath = "models/yolov8n-pose.pt"
 #modelpath = "models/yolov8l-pose.pt"
@@ -300,6 +309,23 @@ def main(page: ft.Page):
     progress_text = ft.Text()
     person_dropdown = ft.Dropdown(width=100, options=[])
     
+        
+    keypoint_table = ft.Column([ft.Row([ft.Text(name, width=100),
+                                        ft.TextField(label="X",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
+                                        ft.TextField(label="Y",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
+                                        ft.TextField(label="Vis",
+                                                    width=50, height=30,
+                                                    border="underline",
+                                                    text_size=18, text_align=ft.TextAlign.RIGHT),
+                                        ]) for name in keypoints_name_list])
+
+    
     # 初期画像（ダミー）
     img_blank = 255*np.ones((IMG_SIZE, IMG_SIZE, 3), dtype="uint8")
     img_h, img_w, _ = img_blank.shape
@@ -324,7 +350,7 @@ def main(page: ft.Page):
     stack = ft.Stack([image_display, gd], width=IMG_SIZE, height=IMG_SIZE)
         
     page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
-    page.add(ft.Row([stack, person_dropdown]))
+    page.add(ft.Row([stack, ft.Column([person_dropdown, keypoint_table])]))
     page.add(ft.Row([progress_bar, progress_text, mouse_loc]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
