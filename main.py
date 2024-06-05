@@ -32,15 +32,15 @@ keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
                                     ft.TextField(label="X",
                                                 width=50, height=30,
                                                 border="underline",
-                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                                text_size=16, text_align=ft.TextAlign.RIGHT),
                                     ft.TextField(label="Y",
                                                 width=50, height=30,
                                                 border="underline",
-                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                                text_size=16, text_align=ft.TextAlign.RIGHT),
                                     ft.TextField(label="Vis",
                                                 width=50, height=30,
                                                 border="underline",
-                                                text_size=18, text_align=ft.TextAlign.RIGHT),
+                                                text_size=16, text_align=ft.TextAlign.RIGHT),
                                     ]) for name in keypoints_name_list])
 
 modelpath = "models/yolov8n-pose.pt"
@@ -228,6 +228,8 @@ def main(page: ft.Page):
         img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
         image_display.src_base64 = get_base64_img(img_result)
         
+        update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+        
         # pageをアップデート
         page.update()
         
@@ -345,25 +347,9 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=400, height=10)
     progress_text = ft.Text()
     person_idx_dropdown = ft.Dropdown(width=100, options=[], on_change=on_person_idx_dropdown_changed)
-    #keypoints_table = generate_keypoints_table(person)
+
     
 
-            
-        
-    # keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
-    #                                     ft.TextField(label="X",
-    #                                                 width=50, height=30,
-    #                                                 border="underline",
-    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
-    #                                     ft.TextField(label="Y",
-    #                                                 width=50, height=30,
-    #                                                 border="underline",
-    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
-    #                                     ft.TextField(label="Vis",
-    #                                                 width=50, height=30,
-    #                                                 border="underline",
-    #                                                 text_size=18, text_align=ft.TextAlign.RIGHT),
-    #                                     ]) for name in keypoints_name_list])
 
     
     # 初期画像（ダミー）
