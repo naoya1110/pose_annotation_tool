@@ -121,6 +121,14 @@ class PersonKeypoints:
     
     def find_nearest_keypoint(self, point):
 
+        self.keypoint_xy_list = []
+
+        for name, data in self.keypoints_dict.items():
+            x=data["x"]
+            y=data["y"]
+            self.keypoint_xy_list.append([x, y])
+
+
         distances = cdist([point], self.keypoint_xy_list)
 
         # 最小距離のインデックスを取得
@@ -247,7 +255,7 @@ def generate_img_keypoints(img_pic, detected_persons):
             keypoints_list.append([x, y])
 
             if visibility == 1:
-                cv2.circle(img_keypoints, center=(x, y), radius=7, color=color, thickness=1, lineType=cv2.LINE_AA)
+                cv2.circle(img_keypoints, center=(x, y), radius=5, color=color, thickness=1, lineType=cv2.LINE_AA)
                 #cv2.circle(img_keypoints, center=(x, y), radius=6, color=(255, 255, 255), thickness=-1, lineType=cv2.LINE_AA)
                 #cv2.putText(img_keypoints, name, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), thickness=1, lineType=cv2.LINE_AA)
             elif visibility == 2:

@@ -28,27 +28,6 @@ keypoints_name_list =  [
                     "left_knee","right_knee",
                     "left_ankle", "right_ankle"]
 
-# def on_keypoints_table_changed(e):
-#     print("keypoints table changed manually")
-
-# keypoints_table = ft.Column([ft.Row([ft.Text(name, width=100),
-#                                     ft.TextField(label="X",
-#                                                 width=50, height=30,
-#                                                 border="underline",
-#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
-#                                                 on_submit=on_keypoints_table_changed),
-#                                     ft.TextField(label="Y",
-#                                                 width=50, height=30,
-#                                                 border="underline",
-#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
-#                                                 on_submit=on_keypoints_table_changed),
-#                                     ft.TextField(label="Vis",
-#                                                 width=50, height=30,
-#                                                 border="underline",
-#                                                 text_size=16, text_align=ft.TextAlign.RIGHT,
-#                                                 on_submit=on_keypoints_table_changed),
-#                                     ]) for name in keypoints_name_list])
-
 
 
 modelpath = "models/yolov8n-pose.pt"
@@ -60,6 +39,7 @@ detected_persons = []
 nearest_idx = 0
 nearest_point_name = ""
 img_pic = None
+img_pic_corrected = None
 selected_person_idx = 0
 selected_point_name = ""
 img_idx = 0
@@ -109,19 +89,9 @@ def main(page: ft.Page):
             person.keypoints_dict[name]["visibility"] = visibility
         
         detected_persons[int(person_idx_dropdown.value)]=person
-        
-        # キーポイント画像を生成
-        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        # print(keypoints_list)
-        
-        # 写真とキーポイントデータを重ね合わせ
-        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
-        
-        # image_displayのプロパティを更新
-        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
-        image_display.src_base64 = get_base64_img(img_result)
-        
         update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+        update_image_display(img_pic, detected_persons)
+        
         
         # pageをアップデート
         page.update()
@@ -208,14 +178,13 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def open_image(filepath_img):
-        global keypoints_list, detected_persons, img_pic, filepath_label, keypoints_table
+        global keypoints_list, detected_persons, img_pic, img_pic_corrected, filepath_label
         
         print(filepath_img)
         dir_images, filename = os.path.split(filepath_img)
         filename_body, _ = os.path.splitext(filename)
         dataset_dir, _ = os.path.split(dir_images)
         filepath_label = os.path.join(dataset_dir, "labels", filename_body+".txt")
-                
 
         # OpenCVで画像を読み込み
         img_pic = np.array(Image.open(filepath_img))
@@ -224,7 +193,12 @@ def main(page: ft.Page):
         resize_ratio = IMG_SIZE/original_img_h
         img_pic = cv2.resize(img_pic, dsize=None, fx=resize_ratio, fy=resize_ratio)
         img_h, img_w, _ = img_pic.shape
-        
+
+        image_display.height = img_h
+        image_display.width = img_w
+        stack.height = img_h
+        stack.width = img_w
+
         # filepath_labelが存在するか確認し，なければYOLOで推論する
         if not os.path.exists(filepath_label):
             print(f"{filepath_label} does not exist.")
@@ -243,7 +217,11 @@ def main(page: ft.Page):
         detected_persons = read_annotation_data(filepath_label, img_h, img_w)
         update_person_idx_dropdown(detected_persons)
         update_keypoints_table(detected_persons[0])
+        img_pic_corrected = gamma_correction(img_pic)
+        update_image_display(img_pic_corrected, detected_persons)
+        page.update()
 
+    def update_image_display(img_pic, detected_persons):
         # キーポイント画像を生成
         img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
         
@@ -253,16 +231,7 @@ def main(page: ft.Page):
         # image_displayのプロパティを更新
         img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
         image_display.src_base64 = get_base64_img(img_result)
-        
-        image_display.height = img_h
-        image_display.width = img_w
-        
-        # stackのプロパティを更新
-        stack.height = img_h
-        stack.width = img_w
-        
-        # pageをアップデート
-        page.update()
+
     
     def update_person_idx_dropdown(detected_persons):
         person_idx_dropdown.options = []
@@ -278,7 +247,7 @@ def main(page: ft.Page):
         
     
     def on_yolo_assist_button_clicked(e):
-        global keypoints_list, detected_persons, img_pic, filepath_label
+        global keypoints_list, detected_persons, img_pic, img_pic_corrected, filepath_label
         print(f"Trying to detect keypoints...")
         
         yolo_assist_button.bgcolor = ft.colors.RED_100
@@ -286,7 +255,7 @@ def main(page: ft.Page):
         time.sleep(0.5)
 
         # YOLO poseで推論
-        results = model(img_pic)[0]
+        results = model(img_pic_corrected)[0]
         annotation_text = generate_label_text(results)
         
         with open(filepath_label, "w") as file:
@@ -295,20 +264,9 @@ def main(page: ft.Page):
 
         # テキストファイルからアノテーションデータを読み取り
         img_h, img_w, _ = img_pic.shape
-        detected_persons = read_annotation_data(filepath_label, img_h, img_w)    
-
-        # キーポイント画像を生成
-        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        # print(keypoints_list)
-        
-        # 写真とキーポイントデータを重ね合わせ
-        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
-        
-        # image_displayのプロパティを更新
-        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
-        image_display.src_base64 = get_base64_img(img_result)
-        
+        detected_persons = read_annotation_data(filepath_label, img_h, img_w)
         update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+        update_image_display(img_pic_corrected, detected_persons)
         yolo_assist_button.bgcolor = ft.colors.BACKGROUND
         
         # pageをアップデート
@@ -362,7 +320,7 @@ def main(page: ft.Page):
         global keypoints_list, nearest_idx, detected_persons, nearest_point_name, selected_person_idx, selected_point_name
         print("Single click")
         x_loc.value = int(e.local_x)
-        y_loc.value = int(e.local_y)        
+        y_loc.value = int(e.local_y)
         xy_clicked = (x_loc.value, y_loc.value)
         print("Point:", xy_clicked)
         
@@ -412,6 +370,25 @@ def main(page: ft.Page):
         person.update_point(selected_point_name, xy_drag)
         detected_persons[selected_person_idx]=person
         update_keypoints_table(person)
+        update_image_display(img_pic, detected_persons)
+        # pageをアップデート
+        page.update()
+    
+    def on_blightness_slider_changed(e):
+        global img_pic, img_pic_corrected
+        img_pic_corrected = gamma_correction(img_pic)
+        update_image_display(img_pic_corrected, detected_persons)
+        page.update()
+        
+    def gamma_correction(img_pic):
+        gamma = float(blightness_slider.value)
+        x = img_pic.copy()
+        x = (x/255).astype("float32")
+        x = x**(1/float(gamma))
+        x = 255*x
+        img_pic_corrected = x.astype("uint8")
+        return img_pic_corrected
+        
 
     def update_keypoints_table(person):
         for i, name in enumerate(keypoints_name_list):
@@ -423,19 +400,7 @@ def main(page: ft.Page):
             keypoints_table.controls[i].controls[3].value = visibility
         keypoints_table.update()
         
-        # キーポイント画像を生成
-        img_keypoints, keypoints_list = generate_img_keypoints(img_pic, detected_persons)
-        print(keypoints_list)
         
-        # 写真とキーポイントデータを重ね合わせ
-        img_result = draw_keypoints_on_picture(img_pic, img_keypoints)
-        
-        # image_displayの画像を更新
-        img_result = cv2.cvtColor(img_result, cv2.COLOR_BGR2RGB)
-        image_display.src_base64 = get_base64_img(img_result)
-        
-        # pageをアップデート
-        page.update()        
     
     
     # コントロール
@@ -448,6 +413,10 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=400, height=10)
     progress_text = ft.Text()
     person_idx_dropdown = ft.Dropdown(width=100, options=[], on_change=on_person_idx_dropdown_changed)
+    blightness_slider = ft.Slider(value=1, min=0.2, max=2,
+                                divisions=9, label="{value}",
+                                round=1,
+                                on_change_end=on_blightness_slider_changed)
 
     
 
@@ -468,15 +437,11 @@ def main(page: ft.Page):
         on_horizontal_drag_update=mouse_drag,
         on_double_tap=mouse_double_click)
     
-    x_loc_label = ft.Text("X", size=20)
-    x_loc = ft.Text("0", size=20)
-    y_loc_label = ft.Text("Y", size=20)
-    y_loc = ft.Text("0", size=20)
+    x_loc = ft.TextField(label="X", value=0, text_size=16, width=100, height=50)
+    y_loc = ft.TextField(label="Y", value=0, text_size=16, width=100, height=50)
     
-    selected_person_label = ft.Text("Person", size=20)
-    selected_person_idx_text = ft.Text("", size=20)
-    selected_keypoint_name_label = ft.Text("Keypoint", size=20)
-    selected_keypoint_name_text = ft.Text("", size=20)
+    selected_person_idx_text = ft.TextField(label="Person Idx", value=0, text_size=16, width=100, height=50)
+    selected_keypoint_name_text = ft.TextField(label="Keypoint Name", value=" ", text_size=16, width=150, height=50)
     
 
     
@@ -485,8 +450,9 @@ def main(page: ft.Page):
     page.add(ft.Row([open_img_dir_button, previous_img_button, next_img_button, save_annotation_button, yolo_assist_button, auto_save_checkbox]))
     page.add(ft.Row([stack, ft.Column([person_idx_dropdown, keypoints_table])]))
     page.add(ft.Row([progress_bar, progress_text,
-                    x_loc_label, x_loc, y_loc_label, y_loc,
-                    selected_person_label, selected_person_idx_text, selected_keypoint_name_label, selected_keypoint_name_text]))
+                    x_loc, y_loc,
+                    selected_person_idx_text, selected_keypoint_name_text,
+                    blightness_slider]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
     file_picker = ft.FilePicker(on_result=on_open_img_dir)
