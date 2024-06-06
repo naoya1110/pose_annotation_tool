@@ -137,11 +137,22 @@ def main(page: ft.Page):
                                                     border="underline",
                                                     text_size=16, text_align=ft.TextAlign.RIGHT,
                                                     on_submit=on_keypoints_table_changed),
-                                        ft.TextField(label="Vis",
-                                                    width=50, height=30,
-                                                    border="underline",
-                                                    text_size=16, text_align=ft.TextAlign.RIGHT,
-                                                    on_submit=on_keypoints_table_changed),
+                                        # ft.TextField(label="Vis",
+                                        #             width=50, height=30,
+                                        #             border="underline",
+                                        #             text_size=16, text_align=ft.TextAlign.RIGHT,
+                                        #             on_submit=on_keypoints_table_changed),
+                                        ft.Slider(min=0, max=2,
+                                                divisions=2, label="{value}",
+                                                height=20, width=100,
+                                                on_change=on_keypoints_table_changed),
+                                        # ft.Dropdown(label="Vis",
+                                        #             width=50, height=40,
+                                        #             options = [ft.dropdown.Option(i) for i in range(3)],
+                                        #             text_size=8,
+                                        #             #border="underline",
+                                        #             #text_size=16, text_align=ft.TextAlign.RIGHT,
+                                        #             on_change=on_keypoints_table_changed),
                                         ]) for name in keypoints_name_list])
 
 
@@ -269,6 +280,10 @@ def main(page: ft.Page):
     def on_yolo_assist_button_clicked(e):
         global keypoints_list, detected_persons, img_pic, filepath_label
         print(f"Trying to detect keypoints...")
+        tmp = yolo_assist_button.bgcolor 
+        yolo_assist_button.bgcolor = ft.colors.RED_100
+        yolo_assist_button.update()
+
         # YOLO poseで推論
         results = model(img_pic)[0]
         annotation_text = generate_label_text(results)
@@ -293,6 +308,7 @@ def main(page: ft.Page):
         image_display.src_base64 = get_base64_img(img_result)
         
         update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+        yolo_assist_button.bgcolor = tmp
         
         # pageをアップデート
         page.update()
