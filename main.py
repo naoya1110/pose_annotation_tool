@@ -280,9 +280,10 @@ def main(page: ft.Page):
     def on_yolo_assist_button_clicked(e):
         global keypoints_list, detected_persons, img_pic, filepath_label
         print(f"Trying to detect keypoints...")
-        tmp = yolo_assist_button.bgcolor 
+        
         yolo_assist_button.bgcolor = ft.colors.RED_100
         yolo_assist_button.update()
+        time.sleep(0.5)
 
         # YOLO poseで推論
         results = model(img_pic)[0]
@@ -308,7 +309,7 @@ def main(page: ft.Page):
         image_display.src_base64 = get_base64_img(img_result)
         
         update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
-        yolo_assist_button.bgcolor = tmp
+        yolo_assist_button.bgcolor = ft.colors.BACKGROUND
         
         # pageをアップデート
         page.update()
