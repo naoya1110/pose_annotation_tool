@@ -332,11 +332,19 @@ def main(page: ft.Page):
             nearest_point_distance_list.append(nearest_point_dictance)
             nearest_point_name_list.append(nearest_point_name)
         
-        selected_person_idx = np.array(nearest_point_distance_list).argmin()
-        selected_point_name = nearest_point_name_list[selected_person_idx]
+        
+        if np.array(nearest_point_distance_list).min() < 100:
+            selected_person_idx = np.array(nearest_point_distance_list).argmin()
+            selected_point_name = nearest_point_name_list[selected_person_idx]
+            person = detected_persons[selected_person_idx]
+        else:
+            selected_person_idx = None
+            selected_point_name = ""
+            person = None
         person_idx_dropdown.value = selected_person_idx
         selected_person_idx_text.value = selected_person_idx
         selected_keypoint_name_text.value = selected_point_name
+        update_keypoints_table(person)
         
         for i, name in enumerate(keypoints_name_list):
             if name == selected_point_name:
@@ -347,6 +355,8 @@ def main(page: ft.Page):
         page.update()
         print("selected person idx", selected_person_idx)
         print("selected point name", selected_point_name)
+
+
     
     def mouse_drag(e: ft.DragUpdateEvent):
         global keypoints_list, nearest_idx, nearest_point_name, img_pic, detected_persons
@@ -392,9 +402,14 @@ def main(page: ft.Page):
 
     def update_keypoints_table(person):
         for i, name in enumerate(keypoints_name_list):
-            x = person.keypoints_dict[name]["x"]
-            y = person.keypoints_dict[name]["y"]
-            visibility = person.keypoints_dict[name]["visibility"]
+            if person != None:
+                x = person.keypoints_dict[name]["x"]
+                y = person.keypoints_dict[name]["y"]
+                visibility = person.keypoints_dict[name]["visibility"]
+            else:
+                x = 0
+                y = 0
+                visibility = 0
             keypoints_table.controls[i].controls[1].value = x
             keypoints_table.controls[i].controls[2].value = y
             keypoints_table.controls[i].controls[3].value = visibility
@@ -437,11 +452,11 @@ def main(page: ft.Page):
         on_horizontal_drag_update=mouse_drag,
         on_double_tap=mouse_double_click)
     
-    x_loc = ft.TextField(label="X", value=0, text_size=16, width=100, height=50)
-    y_loc = ft.TextField(label="Y", value=0, text_size=16, width=100, height=50)
+    x_loc = ft.TextField(label="X", value=0, text_size=16, width=100, height=40)
+    y_loc = ft.TextField(label="Y", value=0, text_size=16, width=100, height=40)
     
-    selected_person_idx_text = ft.TextField(label="Person Idx", value=0, text_size=16, width=100, height=50)
-    selected_keypoint_name_text = ft.TextField(label="Keypoint Name", value=" ", text_size=16, width=150, height=50)
+    selected_person_idx_text = ft.TextField(label="Person Idx", value=0, text_size=16, width=100, height=40)
+    selected_keypoint_name_text = ft.TextField(label="Keypoint Name", value=" ", text_size=16, width=150, height=40)
     
 
     
