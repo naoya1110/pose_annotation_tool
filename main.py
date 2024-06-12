@@ -31,8 +31,11 @@ keypoints_name_list =  [
 
 
 #modelpath = "models/yolov8n-pose.pt"
+if not os.path.exists("models"): os.mkdir("models")
 modelpath = "models/yolov8l-pose.pt"
-model = YOLO(modelpath) 
+model = YOLO(modelpath)
+
+initial_dataset_directory = "dataset"
 
 keypoints_list = []
 detected_persons = []
@@ -137,7 +140,8 @@ def main(page: ft.Page):
         return img_base64
     
     def on_open_img_dir(e: ft.FilePickerResultEvent):
-        global images_dir, image_filenames, filepath_img, num_img_files
+        global images_dir, image_filenames, filepath_img, num_img_files, img_idx
+        img_idx = 0
         images_dir = e.path
         image_filenames = sorted(os.listdir(images_dir))
         image_filenames = [x for x in image_filenames if ".jpg" in x]
@@ -489,7 +493,10 @@ def main(page: ft.Page):
                     blightness_slider]))
     
     #file_picker = ft.FilePicker(on_result=on_img_open)
-    file_picker = ft.FilePicker(on_result=on_open_img_dir)
+    file_picker = ft.FilePicker(
+                        # initial_directory=initial_dataset_directory,
+                        on_result=on_open_img_dir
+                        )
     page.overlay.append(file_picker)
     page.update()
     
