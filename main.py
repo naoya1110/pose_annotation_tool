@@ -30,8 +30,8 @@ keypoints_name_list =  [
 
 
 
-modelpath = "models/yolov8n-pose.pt"
-#modelpath = "models/yolov8l-pose.pt"
+#modelpath = "models/yolov8n-pose.pt"
+modelpath = "models/yolov8l-pose.pt"
 model = YOLO(modelpath) 
 
 keypoints_list = []
@@ -82,6 +82,10 @@ def main(page: ft.Page):
             y = int(keypoints_table.controls[i].controls[2].value)
             visibility = int(keypoints_table.controls[i].controls[3].value)
             
+            if visibility == 0:
+                x = 0
+                y = 0
+            
             person.keypoints_dict[name]["x"] = x
             person.keypoints_dict[name]["xn"] = x/img_w
             person.keypoints_dict[name]["y"] = y
@@ -90,7 +94,7 @@ def main(page: ft.Page):
         
         detected_persons[int(person_idx_dropdown.value)]=person
         update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
-        update_image_display(img_pic, detected_persons)
+        update_image_display(img_pic_corrected, detected_persons)
         
         
         # pageをアップデート
@@ -178,7 +182,7 @@ def main(page: ft.Page):
     
     # ファイルが選択された時のコールバック
     def open_image(filepath_img):
-        global keypoints_list, detected_persons, img_pic, img_pic_corrected, filepath_label
+        global keypoints_list, detected_persons, img_pic, img_pic_corrected, filepath_label, selected_person_idx, selected_point_name
         
         print(filepath_img)
         dir_images, filename = os.path.split(filepath_img)
@@ -215,8 +219,22 @@ def main(page: ft.Page):
         
         # テキストファイルからアノテーションデータを読み取り
         detected_persons = read_annotation_data(filepath_label, img_h, img_w)
-        update_person_idx_dropdown(detected_persons)
-        update_keypoints_table(detected_persons[0])
+        if len(detected_persons) > 0:
+            update_person_idx_dropdown(detected_persons)
+            selected_person_idx = 0
+            person = detected_persons[0]
+        else:
+            selected_person_idx = None
+            selected_point_name = ""
+            person = None
+            
+        person_idx_dropdown.value = selected_person_idx
+        selected_person_idx_text.value = selected_person_idx
+        selected_keypoint_name_text.value = selected_point_name
+        update_keypoints_table(person)
+            
+            
+            
         img_pic_corrected = gamma_correction(img_pic)
         update_image_display(img_pic_corrected, detected_persons)
         page.update()
@@ -265,8 +283,9 @@ def main(page: ft.Page):
         # テキストファイルからアノテーションデータを読み取り
         img_h, img_w, _ = img_pic.shape
         detected_persons = read_annotation_data(filepath_label, img_h, img_w)
-        update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
-        update_image_display(img_pic_corrected, detected_persons)
+        if len(detected_persons) > 0:
+            update_keypoints_table(detected_persons[int(person_idx_dropdown.value)])
+            update_image_display(img_pic_corrected, detected_persons)
         yolo_assist_button.bgcolor = ft.colors.BACKGROUND
         
         # pageをアップデート
@@ -333,7 +352,7 @@ def main(page: ft.Page):
             nearest_point_name_list.append(nearest_point_name)
         
         
-        if np.array(nearest_point_distance_list).min() < 100:
+        if np.array(nearest_point_distance_list).min() < 20:
             selected_person_idx = np.array(nearest_point_distance_list).argmin()
             selected_point_name = nearest_point_name_list[selected_person_idx]
             person = detected_persons[selected_person_idx]
@@ -380,7 +399,7 @@ def main(page: ft.Page):
         person.update_point(selected_point_name, xy_drag)
         detected_persons[selected_person_idx]=person
         update_keypoints_table(person)
-        update_image_display(img_pic, detected_persons)
+        update_image_display(img_pic_corrected, detected_persons)
         # pageをアップデート
         page.update()
     

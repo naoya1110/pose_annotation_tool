@@ -111,9 +111,10 @@ class PersonKeypoints:
         
         xy_wire = []
         for name in names:
-            x = self.keypoints_dict[name]["x"]
-            y = self.keypoints_dict[name]["y"]
-            if (x!=0) and (y!=0):
+            if self.keypoints_dict[name]["visibility"] != 0:
+                x = self.keypoints_dict[name]["x"]
+                y = self.keypoints_dict[name]["y"]
+                #if (x!=0) and (y!=0):
                 xy_wire.append([x, y])
         xy_wire = np.array(xy_wire)
         
@@ -124,10 +125,14 @@ class PersonKeypoints:
         self.keypoint_xy_list = []
 
         for name, data in self.keypoints_dict.items():
-            x=data["x"]
-            y=data["y"]
+            visibility = data["visibility"]
+            if visibility != 0:
+                x=data["x"]
+                y=data["y"]
+            else:
+                x = 1E+6
+                y = 1E+6
             self.keypoint_xy_list.append([x, y])
-
 
         distances = cdist([point], self.keypoint_xy_list)
 
