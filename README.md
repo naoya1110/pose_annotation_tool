@@ -23,6 +23,12 @@ source .venv/bin/activate
 pip install ultralytics flet
 ```
 
+You might need to install `libmpv.so.1` as well
+```
+sudo apt update
+sudo apt install libmpv-dev
+```
+
 ## Run main.py
 ```
 source .venv/bin/activate
