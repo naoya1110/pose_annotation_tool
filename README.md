@@ -17,12 +17,13 @@ Create a virtual environment.
 python3 -m venv .venv
 ```
 
-Install required packages.
+Install required packages in the virtual environment.
 ```
+source .venv/bin/activate
 pip install ultralytics flet
 ```
 
-## Run in Ubuntu
+## Run main.py
 ```
 source .venv/bin/activate
 python3 main.py
