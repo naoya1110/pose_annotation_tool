@@ -36,3 +36,4 @@ Flet filepicker may not work in VScode with the default settings. You might be a
     "GIO_MODULE_DIR": null,
 },
 ```
+Ref: https://askubuntu.com/questions/1462295/ubuntu-22-04-both-eye-of-gnome-and-gimp-failing-with-undefined-symbol-error
