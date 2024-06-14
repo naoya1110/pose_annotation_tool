@@ -1,4 +1,4 @@
-# Human Pose Keypoint Annotation Tool
+# Human Pose Annotation Tool
 
 <img src="Screenshot.png" height=400>
 
