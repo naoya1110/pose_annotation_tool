@@ -8,7 +8,7 @@ Clone this repository.
 git clone https://github.com/naoya1110/pose_annotation_tool.git
 ```
 
-Navigate to the cloned directory.
+Navigate to the directory.
 ```
 cd pose_annotation_tool
 ```
