@@ -17,12 +17,19 @@ Create a virtual environment.
 python3 -m venv .venv
 ```
 
-Install required packages.
+Install required packages in the virtual environment.
 ```
+source .venv/bin/activate
 pip install ultralytics flet
 ```
 
-## Run in Ubuntu
+(optional) You might need to install `libmpv.so.1` if not installed yet.
+```
+sudo apt update
+sudo apt install libmpv-dev
+```
+
+## Run main.py
 ```
 source .venv/bin/activate
 python3 main.py
