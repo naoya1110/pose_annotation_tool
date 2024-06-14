@@ -1,6 +1,6 @@
 # Human Pose Keypoint Annotation Tool
 
-<img src="Screenshot.png" height=200>
+<img src="Screenshot.png" height=400>
 
 ## Setup
 Clone this repository.
